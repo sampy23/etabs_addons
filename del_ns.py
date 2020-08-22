@@ -151,9 +151,13 @@ class Input(Tk):
             thresh_data = temp_data[(temp_data["del_ns_22"] > thresh) | (temp_data["del_ns_33"] > thresh)]
             data.append(thresh_data)
         #===============================================================================================================
+        if len(data) == 0:
+            messagebox.showinfo(title = "No concrete columns",
+                                message = "No concrete columns were found in the active file")
+            self.exit()
         thresh_data = pd.concat(data)
         if thresh_data.empty:
-            messagebox.showinfo(title = "All columns safe",
+            messagebox.showinfo(title = "All columns are safe",
                                 message = "All columns have del_ns less than {}".format(thresh + error_control))
             self.exit()
         problem_frames = thresh_data.Unique_Label.unique()
