@@ -166,7 +166,7 @@ class Input(Tk):
         SapModel.View.RefreshView(0)
 
     def assign(self,event):
-        """This function is called only when ok button is pressed"""
+        """This function is called only when ok button is pressed""" 
 
         SapModel = self.myETABSObject.SapModel
         file_path = SapModel.GetModelFilename()
