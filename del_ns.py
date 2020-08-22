@@ -29,7 +29,9 @@ class Input(Tk):
         self.entry2.set(1.4)
         self.entry2.grid(row = 1,column = 1)
 
-        self.button = Button(frame,text = "OK",command = self.assign,width=8,relief = 'raised')
+        self.button = Button(frame,text = "OK",width=8,relief = 'raised')
+        self.button.bind('<Button-1>', self.assign)
+        self.bind('<Return>', self.assign)
         self.button.grid(row = 2,column=0,columnspan = 2,padx=10,pady=10)
         
         self.attach_to_instance()
@@ -163,7 +165,7 @@ class Input(Tk):
         SapModel.DesignConcrete.SetCode(cur_code)
         SapModel.View.RefreshView(0)
 
-    def assign(self):
+    def assign(self,event):
         """This function is called only when ok button is pressed"""
 
         SapModel = self.myETABSObject.SapModel
