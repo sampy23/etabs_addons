@@ -1,4 +1,4 @@
-# ETABS ADDIN
-Aim is to develop python programs that interact with ETABS using OAPI
+# ETABS Application
+Aim is to develop python programs that interact with ETABS using CSI OAPI
 ## delta_ns add in
-This add in interacts with ETABS using python to calculate delta_ns
+This application interacts with ETABS using python to calculate delta_ns
