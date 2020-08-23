@@ -126,7 +126,7 @@ class Input(Tk):
             # checking if unbraced length is program determined or user defined
             if SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[1] and \
                                                     SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[1]:
-                # catching frames with more than 1 unbraced lengrh
+                # catching frames with more than 1 unbraced length
                 if (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] > 1) and \
                                             (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] > 1):
                     problem_frames.append(frame)
