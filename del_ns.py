@@ -82,7 +82,7 @@ class Input(Tk):
         #===============================================================================================================
         # selecting load cases for output. Otherwise error will be generated for SapModel.Results.FrameForce
         _,combos,_ = SapModel.RespCombo.GetNameList(1, " ")
-        ret = SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
+        SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
         combos = [x for x in combos if x.startswith("U") and not x.endswith("O")]
         for combo in combos:
             ret = SapModel.Results.Setup.SetComboSelectedForOutput(combo,True) 
