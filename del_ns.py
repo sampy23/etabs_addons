@@ -207,7 +207,7 @@ class Input(Tk):
         self.exit()
         
     def exit(self):
-        messagebox.showinfo(title = "Exiting application",message = "For trouble shooting contact me through shahabazsha23@gmail.com ")
+        messagebox.showinfo(title = "Exiting application",message = "For trouble shooting contact me through sbz5677@gmail.com ")
         self.destroy()
         sys.exit()
         
