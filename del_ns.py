@@ -85,7 +85,7 @@ class Input(Tk):
         SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
         combos = [x for x in combos if x.startswith("U") and not x.endswith("O")]
         for combo in combos:
-            ret = SapModel.Results.Setup.SetComboSelectedForOutput(combo,True) 
+            SapModel.Results.Setup.SetComboSelectedForOutput(combo,True) 
         #===============================================================================================================
         section_data = SapModel.PropFrame.GetAllFrameProperties_2()[1:-1] # transposing data
         section_data = pd.DataFrame.from_records(section_data,).T
