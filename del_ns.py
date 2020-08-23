@@ -39,7 +39,7 @@ class Input(Tk):
     def attach_to_instance(self):
         try:
             #get the active ETABS object
-           self.myETABSObject = comtypes.client.GetActiveObject("CSI.ETABS.API.ETABSObject") 
+            self.myETABSObject = comtypes.client.GetActiveObject("CSI.ETABS.API.ETABSObject") 
         except (OSError, comtypes.COMError):
             self.no_model()
 
@@ -76,10 +76,16 @@ class Input(Tk):
         SapModel.SetPresentUnits_2(4,6,2) # kN m C
         SapModel.SetPresentUnits(6) #kn_m_C
         SapModel.SelectObj.ClearSelection() 
-        
+        #===============================================================================================================
         #run model (this will create the analysis model)
         SapModel.Analyze.RunAnalysis()
-
+        #===============================================================================================================
+        # selecting load cases for output. Otherwise error will be generated for SapModel.Results.FrameForce
+        _,combos,_ = SapModel.RespCombo.GetNameList(1, " ")
+        ret = SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
+        combos = [x for x in combos if x.startswith("U") and not x.endswith("O")]
+        for combo in combos:
+            ret = SapModel.Results.Setup.SetComboSelectedForOutput(combo,True) 
         #===============================================================================================================
         section_data = SapModel.PropFrame.GetAllFrameProperties_2()[1:-1] # transposing data
         section_data = pd.DataFrame.from_records(section_data,).T
