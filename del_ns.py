@@ -59,18 +59,14 @@ class Input(Tk):
         shutil.copy2(file_path,new_file_name)
 
     def del_ns(self,SapModel):
-        error_control = 0.03
         fck = float(self.entry1.get())
-        thresh = float(self.entry2.get()) - error_control
+        thresh = float(self.entry2.get()) 
         es = 200000000 # modulus of elasticity of steel in kN/m2
-        col_cover_eff = 100 # i kow its not 100 but this value gives accurate results
         ec = 4700 * math.sqrt(fck) # modulus of elasticity of concrete N/mm2
         ec = ec * 1000 # ec in kn/m2
 
         #assumptions
-        k = 1 # assumed slenderness factor as 1 as this is the worst case for non sway scenario
-        beta_dns = 0.6 # code recommended value is 0.6
-        col_cover_eff = 0.1
+        beta_dns =  1# code recommended value is 0.6
 
         #===============================================================================================================
         SapModel.SetPresentUnits_2(4,6,2) # kN m C
@@ -91,37 +87,28 @@ class Input(Tk):
         section_data = pd.DataFrame.from_records(section_data,).T
         section_data.columns = ["Section","Property Type Enum","t3","t2","tf","tw","t2b","tfb","Area"]
         #===============================================================================================================
-        rebar_data  = []
-        for section in section_data.Section:
-            *_,numb_3,numb_2,bar_size,_,_,_,_,_,_ = SapModel.PropFrame.GetRebarColumn(section)
-            rebar_data.append([section,numb_3,numb_2,bar_size])
-        rebar_data = pd.DataFrame.from_records(rebar_data,columns = ["Section","Long bars in 3 direction",
-                                                                                "Long bars in 2 direction","Bar_dia"])
-        section_data = pd.merge(section_data,rebar_data,on = "Section").drop(["Property Type Enum",
-                                                                                "tf","tw","t2b","tfb"],axis = 1)
-        #===============================================================================================================
         prop_frame_link = []
         for label in SapModel.FrameObj.GetLabelNameList()[1]:
             if SapModel.FrameObj.GetDesignOrientation(label)[0] == 1: # we are only intersted in columns
                 prop_frame_link.append([label,SapModel.FrameObj.GetSection(label)[0]])
+        if len(prop_frame_link) == 0:
+            print(len(prop_frame_link))
+            messagebox.showinfo(title = "No concrete columns",
+                        message = "No concrete columns were found in the active file")
+            self.exit()
+        else:
+            print("{0} columns found".format(len(prop_frame_link)))
         prop_frame_link = pd.DataFrame.from_records(prop_frame_link)
         prop_frame_link.columns = ["Unique_Label","Section"]
         frame_data = pd.merge(section_data,prop_frame_link,on = "Section")
         frame_data = frame_data.set_index("Unique_Label")
         frame_data = frame_data.dropna()
-        frame_data.Bar_dia = frame_data.Bar_dia.astype('int32') # for some reason bar dia is str
-        frame_data.Bar_dia = frame_data.Bar_dia / 1000 # for some reason bar dia is always in mm
         #===============================================================================================================
-        bar_area = math.pi / 4 * frame_data.Bar_dia ** 2
         ig_22 = frame_data.t3 * pow(frame_data.t2,3) / 12 # gross moment of inertia in 22 direction
         ig_33 = frame_data.t2 * pow(frame_data.t3,3) / 12 # gross moment of inertia in 33 direction
-        def bar_MI(dist, area): return area * pow(dist, 2)
-        # moment of inertia of bars
-        i_se_22 = 2 * frame_data.loc[:,"Long bars in 2 direction"] * bar_MI(frame_data.t2/2 - col_cover_eff,bar_area) 
-        i_se_33 = 2 * frame_data.loc[:,"Long bars in 3 direction"] * bar_MI(frame_data.t3/2 - col_cover_eff,bar_area)
-        # etabs uses less accurate version of this equation.
-        frame_data["ei_eff_22"] = (0.2 * ec * ig_22 + es * i_se_22)/(1 + beta_dns)
-        frame_data["ei_eff_33"] = (0.2 * ec * ig_33 + es * i_se_33)/(1 + beta_dns)
+        # etabs preferred equation.
+        frame_data["ei_eff_22"] = (0.4 * ec * ig_22)/(1 + beta_dns)
+        frame_data["ei_eff_33"] = (0.4 * ec * ig_33)/(1 + beta_dns)
         #===============================================================================================================
         cur_code = SapModel.DesignConcrete.GetCode()[0]
         # it has been found that del_ns is critical for unbraced length > 1.
@@ -133,9 +120,11 @@ class Input(Tk):
             if SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[1] and \
                                                     SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[1]:
                 # catching frames with more than 1 unbraced length
-                if (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] > 1) and \
+                if (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] > 1) or \
                                             (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] > 1):
                     problem_frames.append(frame)
+            else: # if some user defined data present
+                print("Warning !!! Frame {0} is found to have user defined unbraced length ratio".format(frame))
         #===============================================================================================================
         f = itemgetter(1,2,5,8)
         ObjectElm = 0
@@ -147,24 +136,25 @@ class Input(Tk):
             force_data.columns = ["Unique_Label","Station","Combo","P"]
             temp_data = pd.merge(frame_data,force_data,on = "Unique_Label")
             column_unsupported = temp_data.Station.max()# assuming height is in meter
-            pc_22 = (math.pi ** 2 * temp_data.ei_eff_22) / (k * column_unsupported) ** 2
-            pc_33 = (math.pi ** 2 * temp_data.ei_eff_33) / (k * column_unsupported) ** 2
+            k_minor = SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0]
+            k_major = SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
+            pc_22 = (math.pi ** 2 * temp_data.ei_eff_22) / (k_minor * column_unsupported) ** 2
+            pc_33 = (math.pi ** 2 * temp_data.ei_eff_33) / (k_major * column_unsupported) ** 2
             # we are only caluclating del_ns for those frames which is critical(unbraced length > 1). 
-            # for such cases Cm is 1
+            # As for such cases Cm is 1
             temp_data["del_ns_22"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_22))
             temp_data["del_ns_33"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_33))
       
             thresh_data = temp_data[(temp_data["del_ns_22"] > thresh) | (temp_data["del_ns_33"] > thresh)]
+            if frame == "36":
+                print(temp_data[temp_data['Combo'] == "UDLSPECXY"])
+                print(k_major,k_minor,column_unsupported,temp_data.ei_eff_22.unique(),temp_data.ei_eff_33.unique(),0.75 * pc_33)
             data.append(thresh_data)
         #===============================================================================================================
-        if len(data) == 0:
-            messagebox.showinfo(title = "No concrete columns",
-                                message = "No concrete columns were found in the active file")
-            self.exit()
         thresh_data = pd.concat(data)
         if thresh_data.empty:
             messagebox.showinfo(title = "All columns are safe",
-                                message = "All columns have del_ns less than {}".format(thresh + error_control))
+                                message = "All columns have del_ns less than {}".format(thresh))
             self.exit()
         problem_frames = thresh_data.Unique_Label.unique()
         #===============================================================================================================
