@@ -148,9 +148,6 @@ class Input(Tk):
             temp_data["del_ns_33"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_33))
       
             thresh_data = temp_data[(temp_data["del_ns_22"] > thresh) | (temp_data["del_ns_33"] > thresh)]
-            if frame == "636":
-                print(temp_data[temp_data['Combo'] == "UDHTN"])
-                print(k_major,k_minor,column_unsupported,temp_data.ei_eff_22.unique(),temp_data.ei_eff_33.unique(),pc_33.unique())
             data.append(thresh_data)
         #===============================================================================================================
         thresh_data = pd.concat(data)
