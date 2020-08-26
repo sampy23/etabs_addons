@@ -19,15 +19,11 @@ class Input(Tk):
         frame = LabelFrame(self,text="Input",padx = 5,pady = 5)
         frame.grid(row=1,column=1)
 
-        Label(frame,text = "f_ck (MPa) =").grid(row = 0,column = 0)
-        Label(frame,text = "\ndel_ns (upper limit) =").grid(row = 1,column = 0)
+        Label(frame,text = "\ndel_ns (upper limit) =").grid(row = 0,column = 0)
 
-        self.entry1 = Entry(frame,width=20)
-        self.entry1.insert(0,40)
-        self.entry1.grid(row = 0,column = 1)
         self.entry2 = Scale(frame,from_ = 1,to = 2,orient = HORIZONTAL,resolution=0.1) # our del_ns only for >1
         self.entry2.set(1.4)
-        self.entry2.grid(row = 1,column = 1)
+        self.entry2.grid(row = 0,column = 1)
 
         self.button = Button(frame,text = "OK",width=8,relief = 'raised')
         self.button.bind('<Button-1>', self.assign)
@@ -59,11 +55,7 @@ class Input(Tk):
         shutil.copy2(file_path,new_file_name)
 
     def del_ns(self,SapModel):
-        fck = float(self.entry1.get())
         thresh = float(self.entry2.get()) 
-        es = 200000000 # modulus of elasticity of steel in kN/m2
-        ec = 4700 * math.sqrt(fck) # modulus of elasticity of concrete N/mm2
-        ec = ec * 1000 # ec in kn/m2
 
         #assumptions
         beta_dns =  1# code recommended value is 0.6
@@ -106,6 +98,16 @@ class Input(Tk):
         #===============================================================================================================
         ig_22 = frame_data.t3 * pow(frame_data.t2,3) / 12 # gross moment of inertia in 22 direction
         ig_33 = frame_data.t2 * pow(frame_data.t3,3) / 12 # gross moment of inertia in 33 direction
+        def section_fck(df,df_column):
+            ls = []
+            for section in df_column:
+                fck_string = SapModel.PropFrame.GetMaterial(section)[0]
+                fck = SapModel.PropMaterial.GetOConcrete(fck_string)[0]/1000 # we want in Mpa
+                ls.append(fck)
+            df["fck"] = ls
+            return df
+        frame_data = section_fck(frame_data,frame_data["Section"])
+        ec = 4700 *frame_data["fck"].pow(1/2) * 1000 # ec in kn/m2
         # etabs preferred equation.
         frame_data["ei_eff_22"] = (0.4 * ec * ig_22)/(1 + beta_dns)
         frame_data["ei_eff_33"] = (0.4 * ec * ig_33)/(1 + beta_dns)
