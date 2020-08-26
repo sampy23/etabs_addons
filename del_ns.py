@@ -98,14 +98,16 @@ class Input(Tk):
         #===============================================================================================================
         ig_22 = frame_data.t3 * pow(frame_data.t2,3) / 12 # gross moment of inertia in 22 direction
         ig_33 = frame_data.t2 * pow(frame_data.t3,3) / 12 # gross moment of inertia in 33 direction
+
         def section_fck(df,df_column):
             ls = []
             for section in df_column:
                 fck_string = SapModel.PropFrame.GetMaterial(section)[0]
-                fck = SapModel.PropMaterial.GetOConcrete(fck_string)[0]/1000 # we want in Mpa
+                fck = SapModel.PropMaterial.GetOConcrete(fck_string)[0]/1000 # we want in MPa
                 ls.append(fck)
             df["fck"] = ls
             return df
+
         frame_data = section_fck(frame_data,frame_data["Section"])
         ec = 4700 *frame_data["fck"].pow(1/2) * 1000 # ec in kn/m2
         # etabs preferred equation.
@@ -113,17 +115,16 @@ class Input(Tk):
         frame_data["ei_eff_33"] = (0.4 * ec * ig_33)/(1 + beta_dns)
         #===============================================================================================================
         cur_code = SapModel.DesignConcrete.GetCode()[0]
-        # it has been found that del_ns is critical for unbraced length > 1.
-        # So we only calculate del_ns for those frames
         SapModel.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
         problem_frames = []
+        # the idea is that column with buckling issue never have del_ns < 1
         for frame in frame_data.index:
             # checking if unbraced length is program determined or user defined
             if SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[1] and \
                                                     SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[1]:
                 # catching frames with more than 1 unbraced length
-                if (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] > 1) or \
-                                            (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] > 1):
+                if (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] >= 1) or \
+                                            (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] >= 1):
                     problem_frames.append(frame)
             else: # if some user defined data present
                 print("Warning !!! Frame {0} is found to have user defined unbraced length ratio".format(frame))
@@ -144,8 +145,8 @@ class Input(Tk):
             k_major = SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
             pc_22 = (math.pi ** 2 * temp_data.ei_eff_22) / (k_minor * column_unsupported) ** 2
             pc_33 = (math.pi ** 2 * temp_data.ei_eff_33) / (k_major * column_unsupported) ** 2
-            # we are only caluclating del_ns for those frames which is critical(unbraced length > 1). 
-            # As for such cases Cm is 1
+            # Calculation of Cm is little obscure for etabs data as it tends to get muddled
+            # so for a conservative approach we take Cm as 1
             temp_data["del_ns_22"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_22))
             temp_data["del_ns_33"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_33))
       
