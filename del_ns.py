@@ -135,7 +135,9 @@ class Input(Tk):
             force_data = pd.DataFrame.from_records(f(force_data)).T
             force_data.columns = ["Unique_Label","Station","Combo","P"]
             temp_data = pd.merge(frame_data,force_data,on = "Unique_Label")
-            column_unsupported = temp_data.Station.max()# assuming height is in meter
+            # end length offset has to be added if present
+            # assuming height is in meter
+            column_unsupported = temp_data.Station.max() + SapModel.FrameObj.GetEndLengthOffset(frame)[2]
             k_minor = SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0]
             k_major = SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
             pc_22 = (math.pi ** 2 * temp_data.ei_eff_22) / (k_minor * column_unsupported) ** 2
@@ -146,9 +148,9 @@ class Input(Tk):
             temp_data["del_ns_33"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_33))
       
             thresh_data = temp_data[(temp_data["del_ns_22"] > thresh) | (temp_data["del_ns_33"] > thresh)]
-            if frame == "36":
-                print(temp_data[temp_data['Combo'] == "UDLSPECXY"])
-                print(k_major,k_minor,column_unsupported,temp_data.ei_eff_22.unique(),temp_data.ei_eff_33.unique(),0.75 * pc_33)
+            if frame == "636":
+                print(temp_data[temp_data['Combo'] == "UDHTN"])
+                print(k_major,k_minor,column_unsupported,temp_data.ei_eff_22.unique(),temp_data.ei_eff_33.unique(),pc_33.unique())
             data.append(thresh_data)
         #===============================================================================================================
         thresh_data = pd.concat(data)
