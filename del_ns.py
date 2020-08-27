@@ -21,11 +21,11 @@ class Input(Tk):
         self.attach_to_instance()
 
     def thresh_input(self):
-        self.geometry("500x200")
-        self.frame_1 = LabelFrame(self,height=200,width=500)
-        self.frame_2 = LabelFrame(self,height=200,width=400,text="Input",padx = 5,pady = 5)
-        self.frame_1.grid_propagate(0)
-        self.frame_1.grid(row=0,column=0,columnspan = 2,rowspan = 2)
+        self.geometry("700x300")
+        self.frame_1 = LabelFrame(self,height=300,width=700)
+        self.frame_2 = LabelFrame(self,height=300,width=700,text="Input",padx = 5,pady = 5)
+        self.frame_1.grid(row=0,column=0)
+        self.frame_1.grid_propagate(0) # this is for a fixed frame size
         self.frame_2.place(in_=self.frame_1,anchor="c", relx=.5, rely=.5)
 
         self.label = Label(self.frame_2,text = "\ndel_ns (upper limit) =")
@@ -64,6 +64,13 @@ class Input(Tk):
         os.chdir(".//_backup")
         copy2(file_path,new_file_name)
 
+    def label_fn(self,text,row,column = 0):
+        self.lbl = Label(self.frame_1,text = text)
+        self.lbl.grid(row = row,column=column)
+        self.lbl.config(font=self.font_size)
+        self.update() # to show above text in window
+        return self.lbl
+
     def del_ns(self,SapModel):
 
         #assumptions
@@ -93,16 +100,10 @@ class Input(Tk):
                 prop_frame_link.append([label,SapModel.FrameObj.GetSection(label)[0]])
 
         if len(prop_frame_link) == 0:
-            self.lbl_3 = Label(self,text = "No concrete columns were found in the active file")
-            self.lbl_3.grid(row = 2,column=6,columnspan=6)
-            self.lbl_3.config(font=self.font_size)
-            self.update() # to show above text in window
+            self.lbl_3 = self.label_fn("No concrete columns were found in the active file.",row = 2)
             self.exit()
         else:
-            self.lbl_3 = Label(self.frame_1,text = "{0} columns found".format(len(prop_frame_link)))
-            self.lbl_3.grid(row = 2,column=6,columnspan=6)
-            self.lbl_3.config(font=self.font_size)
-            self.update() # to show above text in window
+            self.lbl_3 = self.label_fn("{0} concrete columns found in the model.".format(len(prop_frame_link)),row = 2)
 
         prop_frame_link = pd.DataFrame.from_records(prop_frame_link)
         prop_frame_link.columns = ["Unique_Label","Section"]
@@ -141,7 +142,8 @@ class Input(Tk):
                                             (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] >= 1):
                     problem_frames.append(frame)
             else: # if some user defined data present
-                print("Warning !!! Frame {0} is found to have user defined unbraced length ratio".format(frame))
+                self.lbl_4 = self.label_fn("Warning !!! Frame {0} is found to have user defined unbraced length ratio"\
+                                                                                                .format(frame),row = 3)
         #===============================================================================================================
         f = itemgetter(1,2,5,8)
         ObjectElm = 0
@@ -169,13 +171,14 @@ class Input(Tk):
         #===============================================================================================================
         thresh_data = pd.concat(data)
         if thresh_data.empty:
-            messagebox.showinfo(title = "All columns are safe",
-                                message = "All columns have del_ns less than {}".format(self.thresh))
+            self.lbl_5 = self.label_fn("All columns have del_ns less than {0}.".format(self.thresh),row = 4)
             self.exit()
         problem_frames = thresh_data.Unique_Label.unique()
         #===============================================================================================================
+        self.lbl_5 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)),row = 4)
         for frame in problem_frames:
             SapModel.FrameObj.SetSelected(frame,True)
+        self.lbl_6 = self.label_fn("Check columns selected in the model.".format(len(problem_frames)),row = 5)
         #===============================================================================================================
         # we need to reset our code back to ACI-14
         SapModel.DesignConcrete.SetCode(cur_code)
@@ -190,37 +193,35 @@ class Input(Tk):
         self.thresh = float(self.entry2.get()) 
 
         self.frame_2.destroy()
-
-        self.lbl_1 = Label(self.frame_1,text = "Active file is {0}".format(base_name))
-        self.lbl_1.grid(row = 0,column=6,columnspan=6)
-        self.lbl_1.config(font=self.font_size)
-        self.update() # to show above text in window
+        
+        lbl_1 = self.label_fn("Active file is {0}.".format(base_name),row = 0)
 
         self.backup(file_path) # backup function
 
-        self.lbl_2 = Label(self.frame_1,text = "Backup created in file root directory")
-        self.lbl_2.grid(row=1,column=6,columnspan=6)
-        self.lbl_2.config(font=self.font_size)
-        self.update() # to show above text in window
+        lbl_2 = self.label_fn("Backup created in file root directory.",row = 1)
         
         self.del_ns(SapModel) # heart of program
 
-        # self.button.destroy()#["state"] = DISABLED
-        # self.lbl.destroy()
         yes = messagebox.askyesno(title = "Failing columns selected",
         message = "Do you wish to continue?")
         if not yes:
             self.exit()
         else:
-            self.lbl_1.destroy()
-            self.lbl_2.destroy()
+            lbl_1.destroy()
+            lbl_2.destroy()
             self.lbl_3.destroy()
+            try:
+                self.lbl_4.destroy()
+            except:
+                pass
+            self.lbl_5.destroy()
+            self.lbl_6.destroy()
             self.thresh_input()
 
     def no_model(self):
         self.button["state"] = DISABLED
         messagebox.showwarning(title = "Active model not found",
-                           message = "Close all ETABS instances and reopen target file")
+                           message = "Close all ETABS instances and reopen target file first")
         self.exit()
         
     def exit(self):
