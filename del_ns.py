@@ -16,22 +16,32 @@ class Input(Tk):
 
         self.title("Del_ns")
         self.iconbitmap("icon.ico")
-        frame = LabelFrame(self,text="Input",padx = 5,pady = 5)
-        frame.grid(row=1,column=1)
+        self.font_size = ("Courier", 16)
+        self.thresh_input()
+        self.attach_to_instance()
 
-        Label(frame,text = "\ndel_ns (upper limit) =").grid(row = 0,column = 0)
+    def thresh_input(self):
+        self.geometry("500x200")
+        self.frame_1 = LabelFrame(self,height=200,width=500)
+        self.frame_2 = LabelFrame(self,height=200,width=400,text="Input",padx = 5,pady = 5)
+        self.frame_1.grid_propagate(0)
+        self.frame_1.grid(row=0,column=0,columnspan = 2,rowspan = 2)
+        self.frame_2.place(in_=self.frame_1,anchor="c", relx=.5, rely=.5)
 
-        self.entry2 = Scale(frame,from_ = 1,to = 2,orient = HORIZONTAL,resolution=0.1) # our del_ns only for >1
+        self.label = Label(self.frame_2,text = "\ndel_ns (upper limit) =")
+        self.label.grid(row = 0,column = 0)
+        self.label.config(font=self.font_size)
+
+        self.entry2 = Scale(self.frame_2,from_ = 1,to = 2,orient = HORIZONTAL,resolution=0.1) # our del_ns calc only for > 1
         self.entry2.set(1.4)
         self.entry2.grid(row = 0,column = 1)
 
-        self.button = Button(frame,text = "OK",width=8,relief = 'raised')
+        self.button = Button(self.frame_2,text = "OK",width=8,relief = 'raised')
         self.button.bind('<Button-1>', self.assign)
         self.bind('<Return>', self.assign)
-        self.button.grid(row = 2,column=0,columnspan = 2,padx=10,pady=10)
-        
-        self.attach_to_instance()
-            
+        self.button.grid(row = 1,column=0,columnspan = 2,padx=10,pady=10)
+        self.button.config(font=self.font_size)
+
     def attach_to_instance(self):
         try:
             #get the active ETABS object
@@ -55,11 +65,9 @@ class Input(Tk):
         copy2(file_path,new_file_name)
 
     def del_ns(self,SapModel):
-        thresh = float(self.entry2.get()) 
 
         #assumptions
         beta_dns =  1# code recommended value is 0.6
-
         #===============================================================================================================
         SapModel.SetPresentUnits_2(4,6,2) # kN m C
         SapModel.SetPresentUnits(6) #kn_m_C
@@ -85,13 +93,15 @@ class Input(Tk):
                 prop_frame_link.append([label,SapModel.FrameObj.GetSection(label)[0]])
 
         if len(prop_frame_link) == 0:
-            self.lbl = Label(self,text = "No concrete columns were found in the active file")
-            self.lbl.grid(row = 4,column=0,columnspan=2)
+            self.lbl_3 = Label(self,text = "No concrete columns were found in the active file")
+            self.lbl_3.grid(row = 2,column=6,columnspan=6)
+            self.lbl_3.config(font=self.font_size)
             self.update() # to show above text in window
             self.exit()
         else:
-            self.lbl = Label(self,text = "{0} columns found".format(len(prop_frame_link)))
-            self.lbl.grid(row = 4,column=0,columnspan=2)
+            self.lbl_3 = Label(self.frame_1,text = "{0} columns found".format(len(prop_frame_link)))
+            self.lbl_3.grid(row = 2,column=6,columnspan=6)
+            self.lbl_3.config(font=self.font_size)
             self.update() # to show above text in window
 
         prop_frame_link = pd.DataFrame.from_records(prop_frame_link)
@@ -154,13 +164,13 @@ class Input(Tk):
             temp_data["del_ns_22"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_22))
             temp_data["del_ns_33"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_33))
       
-            thresh_data = temp_data[(temp_data["del_ns_22"] > thresh) | (temp_data["del_ns_33"] > thresh)]
+            thresh_data = temp_data[(temp_data["del_ns_22"] > self.thresh) | (temp_data["del_ns_33"] > self.thresh)]
             data.append(thresh_data)
         #===============================================================================================================
         thresh_data = pd.concat(data)
         if thresh_data.empty:
             messagebox.showinfo(title = "All columns are safe",
-                                message = "All columns have del_ns less than {}".format(thresh))
+                                message = "All columns have del_ns less than {}".format(self.thresh))
             self.exit()
         problem_frames = thresh_data.Unique_Label.unique()
         #===============================================================================================================
@@ -177,30 +187,35 @@ class Input(Tk):
         SapModel = self.myETABSObject.SapModel
         file_path = SapModel.GetModelFilename()
         base_name = os.path.basename(file_path)[:-4]
+        self.thresh = float(self.entry2.get()) 
 
-        self.button["state"] = DISABLED
-        self.lbl = Label(self,text = "Active file is {0} \nIf this is not your active file close all ETABS reopen".\
-                                                                format(base_name),anchor = 'w')
-        self.lbl.grid(row = 5,column=0,columnspan=2)
+        self.frame_2.destroy()
+
+        self.lbl_1 = Label(self.frame_1,text = "Active file is {0}".format(base_name))
+        self.lbl_1.grid(row = 0,column=6,columnspan=6)
+        self.lbl_1.config(font=self.font_size)
         self.update() # to show above text in window
 
         self.backup(file_path) # backup function
 
-        self.lbl = Label(self,text = "Backup created in file root directory")
-        self.lbl.grid(row=3,column=0,columnspan=2)
+        self.lbl_2 = Label(self.frame_1,text = "Backup created in file root directory")
+        self.lbl_2.grid(row=1,column=6,columnspan=6)
+        self.lbl_2.config(font=self.font_size)
         self.update() # to show above text in window
-
+        
         self.del_ns(SapModel) # heart of program
 
-        self.lbl.destroy()
+        # self.button.destroy()#["state"] = DISABLED
+        # self.lbl.destroy()
         yes = messagebox.askyesno(title = "Failing columns selected",
         message = "Do you wish to continue?")
         if not yes:
             self.exit()
         else:
-            self.lbl.destroy()
-            self.button["state"] = NORMAL
-        
+            self.lbl_1.destroy()
+            self.lbl_2.destroy()
+            self.lbl_3.destroy()
+            self.thresh_input()
 
     def no_model(self):
         self.button["state"] = DISABLED
