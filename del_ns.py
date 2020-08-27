@@ -1,13 +1,13 @@
 """GUI program to interact with ETABS to calculate del_ns"""
 
 from tkinter import Button, Tk, HORIZONTAL,Label,Label,Entry,Scale,LabelFrame,messagebox,DISABLED,NORMAL
-import sys
+from sys import exit
 import os
 import comtypes.client
-import math
+from math import pi
 import pandas as pd
-import shutil
-import time
+from shutil import copy2
+from time import strftime
 from operator import itemgetter
 
 class Input(Tk):
@@ -45,14 +45,14 @@ class Input(Tk):
         os.chdir(os.path.dirname(file_path))
         file_name_ext = os.path.basename(file_path)
         file_name,ext = os.path.splitext(file_name_ext)
-        time_stamp = time.strftime("%Y%m%d-%H%M%S")
+        time_stamp = strftime("%Y%m%d-%H%M%S")
         new_file_name = file_name+ "_" + time_stamp + ext
         try:
             os.mkdir(".//_backup")
         except FileExistsError:
             pass
         os.chdir(".//_backup")
-        shutil.copy2(file_path,new_file_name)
+        copy2(file_path,new_file_name)
 
     def del_ns(self,SapModel):
         thresh = float(self.entry2.get()) 
@@ -143,8 +143,8 @@ class Input(Tk):
             column_unsupported = temp_data.Station.max() + SapModel.FrameObj.GetEndLengthOffset(frame)[2]
             k_minor = SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0]
             k_major = SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
-            pc_22 = (math.pi ** 2 * temp_data.ei_eff_22) / (k_minor * column_unsupported) ** 2
-            pc_33 = (math.pi ** 2 * temp_data.ei_eff_33) / (k_major * column_unsupported) ** 2
+            pc_22 = (pi ** 2 * temp_data.ei_eff_22) / (k_minor * column_unsupported) ** 2
+            pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (k_major * column_unsupported) ** 2
             # Calculation of Cm is little obscure for etabs data as it tends to get muddled
             # so for a conservative approach we take Cm as 1
             temp_data["del_ns_22"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_22))
@@ -207,7 +207,7 @@ class Input(Tk):
     def exit(self):
         messagebox.showinfo(title = "Exiting application",message = "For trouble shooting contact me through sbz5677@gmail.com ")
         self.destroy()
-        sys.exit()
+        exit()
         
         
 
