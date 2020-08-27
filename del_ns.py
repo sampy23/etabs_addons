@@ -83,13 +83,17 @@ class Input(Tk):
         for label in SapModel.FrameObj.GetLabelNameList()[1]:
             if SapModel.FrameObj.GetDesignOrientation(label)[0] == 1: # we are only intersted in columns
                 prop_frame_link.append([label,SapModel.FrameObj.GetSection(label)[0]])
+
         if len(prop_frame_link) == 0:
-            print(len(prop_frame_link))
-            messagebox.showinfo(title = "No concrete columns",
-                        message = "No concrete columns were found in the active file")
+            self.lbl = Label(self,text = "No concrete columns were found in the active file")
+            self.lbl.grid(row = 4,column=0,columnspan=2)
+            self.update() # to show above text in window
             self.exit()
         else:
-            print("{0} columns found".format(len(prop_frame_link)))
+            self.lbl = Label(self,text = "{0} columns found".format(len(prop_frame_link)))
+            self.lbl.grid(row = 4,column=0,columnspan=2)
+            self.update() # to show above text in window
+
         prop_frame_link = pd.DataFrame.from_records(prop_frame_link)
         prop_frame_link.columns = ["Unique_Label","Section"]
         frame_data = pd.merge(section_data,prop_frame_link,on = "Section")
@@ -175,10 +179,10 @@ class Input(Tk):
         base_name = os.path.basename(file_path)[:-4]
 
         self.button["state"] = DISABLED
-        yes = messagebox.askyesno(title = "Active file is {0}".format(base_name),
-                    message = "Is {0} your active model".format(base_name))
-        if not yes:
-            self.no_model()
+        self.lbl = Label(self,text = "Active file is {0} \nIf this is not your active file close all ETABS reopen".\
+                                                                format(base_name),anchor = 'w')
+        self.lbl.grid(row = 5,column=0,columnspan=2)
+        self.update() # to show above text in window
 
         self.backup(file_path) # backup function
 
