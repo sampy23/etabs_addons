@@ -73,7 +73,7 @@ class Input(Tk):
             SapModel = self.myETABSObject.SapModel
         except (OSError, comtypes.COMError):
             self.no_model()
-            
+
         file_path = SapModel.GetModelFilename()
         base_name = os.path.basename(file_path)[:-4]
         self.thresh = float(self.entry2.get()) 
@@ -126,16 +126,15 @@ class Input(Tk):
                 prop_frame_link.append([label,SapModel.FrameObj.GetSection(label)[0]])
 
         if len(prop_frame_link) == 0:
-            self.lbl_3 = self.label_fn("No concrete columns were found in the active file.",row = 2)
+            self.lbl_3 = self.label_fn("No columns were found in the active file.",row = 2)
             self.exit()
         else:
-            self.lbl_3 = self.label_fn("{0} concrete columns found in the model.".format(len(prop_frame_link)),row = 2)
+            self.lbl_3 = self.label_fn("{0} columns found in the model.".format(len(prop_frame_link)),row = 2)
 
         prop_frame_link = pd.DataFrame.from_records(prop_frame_link)
         prop_frame_link.columns = ["Unique_Label","Section"]
         frame_data = pd.merge(section_data,prop_frame_link,on = "Section")
         frame_data = frame_data.set_index("Unique_Label")
-        frame_data = frame_data.dropna()
         #===============================================================================================================
         ig_22 = frame_data.t3 * pow(frame_data.t2,3) / 12 # gross moment of inertia in 22 direction
         ig_33 = frame_data.t2 * pow(frame_data.t3,3) / 12 # gross moment of inertia in 33 direction
@@ -189,25 +188,31 @@ class Input(Tk):
             thresh_data = temp_data[(temp_data["del_ns_22"] > self.thresh) | (temp_data["del_ns_33"] > self.thresh)]
             data.append(thresh_data)
         #===============================================================================================================
-        thresh_data = pd.concat(data)
-        if thresh_data.empty:
-            self.lbl_4 = self.label_fn("All columns have del_ns less than {0}".format(self.thresh),row = 4)
-            self.safe = True
+        # no concrete columns
+        if len(data) == 0:
+            self.lbl_4 = self.label_fn("No concrete columns found in the active model",row = 4)
             self.cont_yesno()
+        # concrete columns found
         else:
-            self.safe = False
-            problem_frames = thresh_data.Unique_Label.unique()
-            #===============================================================================================================
-            self.lbl_4 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)),row = 4)
-            for frame in problem_frames:
-                SapModel.FrameObj.SetSelected(frame,True)
-            self.lbl_5 = self.label_fn("Check columns selected in the model.",row = 5)
-            #===============================================================================================================
-            # we need to reset our code back to ACI-14
-            SapModel.DesignConcrete.SetCode(cur_code)
-            SapModel.View.RefreshView(0)
-        if not self.safe:
-            self.cont_yesno()
+            thresh_data = pd.concat(data)
+            if thresh_data.empty:
+                self.lbl_5 = self.label_fn("All columns have del_ns less than {0}".format(self.thresh),row = 4)
+                self.safe = True
+                self.cont_yesno()
+            else:
+                self.safe = False
+                problem_frames = thresh_data.Unique_Label.unique()
+                #===============================================================================================================
+                self.lbl_5 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)),row = 4)
+                for frame in problem_frames:
+                    SapModel.FrameObj.SetSelected(frame,True)
+                self.lbl_6 = self.label_fn("Check columns selected in the model.",row = 5)
+                #===============================================================================================================
+                # we need to reset our code back to ACI-14
+                SapModel.DesignConcrete.SetCode(cur_code)
+                SapModel.View.RefreshView(0)
+            if not self.safe:
+                self.cont_yesno()
 
     def cont_yesno(self):
         yes = messagebox.askyesno(title = "Failing columns selected",
@@ -218,10 +223,11 @@ class Input(Tk):
             self.lbl_1.destroy()
             self.lbl_2.destroy()
             self.lbl_3.destroy()
-            self.lbl_4.destroy()
+
             # exception to deal with all column safe scenario
             try:
                 self.lbl_5.destroy()
+                self.lbl_6.destroy()
             except:
                 pass
             self.thresh_input() 
