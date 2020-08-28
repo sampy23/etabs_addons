@@ -192,7 +192,7 @@ class Input(Tk):
         #===============================================================================================================
         # no concrete columns
         if len(data) == 0:
-            self.lbl_4 = self.label_fn("No concrete columns found in the active model")
+            self.lbl_4 = self.label_fn("No concrete columns found in the active model.")
             self.cont_yesno()
         # concrete columns found
         else:
