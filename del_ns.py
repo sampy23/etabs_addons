@@ -14,11 +14,11 @@ class Input(Tk):
     def __init__(self):
         super().__init__() # initialise the superclass Tk
 
+        self.attach_to_instance()
         self.title("Del_ns")
         self.iconbitmap("icon.ico")
         self.font_size = ("Courier", 16)
-        self.thresh_input()
-        self.attach_to_instance()
+        self.thresh_input()    
 
     def thresh_input(self):
         windo_size = "600x200"
@@ -52,6 +52,12 @@ class Input(Tk):
             self.myETABSObject = comtypes.client.GetActiveObject("CSI.ETABS.API.ETABSObject") 
         except (OSError, comtypes.COMError):
             self.no_model()
+
+    def no_model(self):
+        self.withdraw()
+        messagebox.showwarning(title = "Active model not found",
+                           message = "Close all ETABS instances if any open and reopen target file first")
+        self.exit()  
 
     def backup(self,file_path):
         # model backup
@@ -210,16 +216,14 @@ class Input(Tk):
             self.lbl_4.destroy()
             self.lbl_5.destroy()
             self.thresh_input()
-
-    def no_model(self):
-        self.button["state"] = DISABLED
-        messagebox.showwarning(title = "Active model not found",
-                           message = "Close all ETABS instances and reopen target file first")
-        self.exit()
         
     def exit(self):
-        self.label_fn("Exiting application...................",row = 6)
-        self.update()
+        # exception for call from "no model"
+        try:
+            self.label_fn("Exiting application...................",row = 6)
+            self.update()
+        except:
+            pass
         messagebox.showinfo(title = "Help",message = "For trouble shooting contact me through sbz5677@gmail.com ")
         self.destroy()
         exit()
