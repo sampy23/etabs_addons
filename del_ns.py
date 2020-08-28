@@ -25,6 +25,7 @@ class Input(Tk):
         height = int(windo_size[4:])
         width = int(windo_size[:3])
         self.geometry(windo_size)
+        
         self.frame_1 = LabelFrame(self,height=height,width=width)
         self.frame_2 = LabelFrame(self,height=height,width=width,text="Input",padx = 5,pady = 5)
         self.frame_1.grid(row=0,column=0)
@@ -75,7 +76,6 @@ class Input(Tk):
         return self.lbl
 
     def del_ns(self,SapModel):
-
         #assumptions
         beta_dns =  1# code recommended value is 0.6
         #===============================================================================================================
@@ -227,4 +227,3 @@ class Input(Tk):
 if __name__ == '__main__':
     app = Input()
     app.mainloop()
-
