@@ -21,9 +21,12 @@ class Input(Tk):
         self.attach_to_instance()
 
     def thresh_input(self):
-        self.geometry("700x300")
-        self.frame_1 = LabelFrame(self,height=300,width=700)
-        self.frame_2 = LabelFrame(self,height=300,width=700,text="Input",padx = 5,pady = 5)
+        windo_size = "600x200"
+        height = int(windo_size[4:])
+        width = int(windo_size[:3])
+        self.geometry(windo_size)
+        self.frame_1 = LabelFrame(self,height=height,width=width)
+        self.frame_2 = LabelFrame(self,height=height,width=width,text="Input",padx = 5,pady = 5)
         self.frame_1.grid(row=0,column=0)
         self.frame_1.grid_propagate(0) # this is for a fixed frame size
         self.frame_2.place(in_=self.frame_1,anchor="c", relx=.5, rely=.5)
@@ -65,7 +68,7 @@ class Input(Tk):
         copy2(file_path,new_file_name)
 
     def label_fn(self,text,row,column = 0):
-        self.lbl = Label(self.frame_1,text = text)
+        self.lbl = Label(self.frame_1,text = text,width = 50,anchor="n",)
         self.lbl.grid(row = row,column=column)
         self.lbl.config(font=self.font_size)
         self.update() # to show above text in window
@@ -178,7 +181,7 @@ class Input(Tk):
         self.lbl_5 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)),row = 4)
         for frame in problem_frames:
             SapModel.FrameObj.SetSelected(frame,True)
-        self.lbl_6 = self.label_fn("Check columns selected in the model.".format(len(problem_frames)),row = 5)
+        self.lbl_6 = self.label_fn("Check columns selected in the model.",row = 5)
         #===============================================================================================================
         # we need to reset our code back to ACI-14
         SapModel.DesignConcrete.SetCode(cur_code)
@@ -225,12 +228,12 @@ class Input(Tk):
         self.exit()
         
     def exit(self):
-        messagebox.showinfo(title = "Exiting application",message = "For trouble shooting contact me through sbz5677@gmail.com ")
+        self.label_fn("Exiting application...................",row = 6)
+        self.update()
+        messagebox.showinfo(title = "Help",message = "For trouble shooting contact me through sbz5677@gmail.com ")
         self.destroy()
         exit()
         
-        
-
 if __name__ == '__main__':
     app = Input()
     app.mainloop()
