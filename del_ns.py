@@ -68,7 +68,7 @@ class Input(Tk):
         copy2(file_path,new_file_name)
 
     def label_fn(self,text,row,column = 0):
-        self.lbl = Label(self.frame_1,text = text,width = 50,anchor="n",)
+        self.lbl = Label(self.frame_1,text = text,width = 50,anchor="w",)
         self.lbl.grid(row = row,column=column)
         self.lbl.config(font=self.font_size)
         self.update() # to show above text in window
@@ -137,16 +137,10 @@ class Input(Tk):
         problem_frames = []
         # the idea is that column with buckling issue never have del_ns < 1
         for frame in frame_data.index:
-            # checking if unbraced length is program determined or user defined
-            if SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[1] and \
-                                                    SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[1]:
-                # catching frames with more than 1 unbraced length
-                if (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] >= 1) or \
+            # catching frames with more than 1 unbraced length
+            if (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] >= 1) or \
                                             (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] >= 1):
-                    problem_frames.append(frame)
-            else: # if some user defined data present
-                self.lbl_4 = self.label_fn("Warning !!! Frame {0} is found to have user defined unbraced length ratio"\
-                                                                                                .format(frame),row = 3)
+                problem_frames.append(frame)
         #===============================================================================================================
         f = itemgetter(1,2,5,8)
         ObjectElm = 0
@@ -174,14 +168,14 @@ class Input(Tk):
         #===============================================================================================================
         thresh_data = pd.concat(data)
         if thresh_data.empty:
-            self.lbl_5 = self.label_fn("All columns have del_ns less than {0}.".format(self.thresh),row = 4)
+            self.lbl_4 = self.label_fn("All columns have del_ns less than {0}.".format(self.thresh),row = 4)
             self.exit()
         problem_frames = thresh_data.Unique_Label.unique()
         #===============================================================================================================
-        self.lbl_5 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)),row = 4)
+        self.lbl_4 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)),row = 4)
         for frame in problem_frames:
             SapModel.FrameObj.SetSelected(frame,True)
-        self.lbl_6 = self.label_fn("Check columns selected in the model.",row = 5)
+        self.lbl_5 = self.label_fn("Check columns selected in the model.",row = 5)
         #===============================================================================================================
         # we need to reset our code back to ACI-14
         SapModel.DesignConcrete.SetCode(cur_code)
@@ -213,12 +207,8 @@ class Input(Tk):
             lbl_1.destroy()
             lbl_2.destroy()
             self.lbl_3.destroy()
-            try:
-                self.lbl_4.destroy()
-            except:
-                pass
+            self.lbl_4.destroy()
             self.lbl_5.destroy()
-            self.lbl_6.destroy()
             self.thresh_input()
 
     def no_model(self):
