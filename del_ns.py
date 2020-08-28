@@ -165,6 +165,7 @@ class Input(Tk):
         # the idea is that column with buckling issue never have del_ns < 1
         for frame in frame_data.index:
             # catching frames with more than 1 unbraced length
+            # this will also filter out all steel columns
             if (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] >= 1) or \
                                             (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] >= 1):
                 problem_frames.append(frame)
