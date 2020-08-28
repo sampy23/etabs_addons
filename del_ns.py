@@ -15,10 +15,25 @@ class Input(Tk):
         super().__init__() # initialise the superclass Tk
 
         self.attach_to_instance()
+
         self.title("Del_ns")
         self.iconbitmap("icon.ico")
         self.font_size = ("Courier", 16)
+        self.asked = False #whether user has been given an option or not
         self.thresh_input()    
+
+    def attach_to_instance(self):
+        try:
+            #get the active ETABS object
+            self.myETABSObject = comtypes.client.GetActiveObject("CSI.ETABS.API.ETABSObject") 
+        except (OSError, comtypes.COMError):
+            self.no_model()
+
+    def no_model(self):
+        self.withdraw()
+        messagebox.showwarning(title = "Active model not found",
+                           message = "Close all ETABS instances if any open and reopen target file first")
+        self.exit() 
 
     def thresh_input(self):
         windo_size = "600x200"
@@ -46,18 +61,28 @@ class Input(Tk):
         self.button.grid(row = 1,column=0,columnspan = 2,padx=10,pady=10)
         self.button.config(font=self.font_size)
 
-    def attach_to_instance(self):
-        try:
-            #get the active ETABS object
-            self.myETABSObject = comtypes.client.GetActiveObject("CSI.ETABS.API.ETABSObject") 
-        except (OSError, comtypes.COMError):
-            self.no_model()
+    def label_fn(self,text,row,column = 0):
+        self.lbl = Label(self.frame_1,text = text,width = 50,anchor="w",)
+        self.lbl.grid(row = row,column=column)
+        self.lbl.config(font=self.font_size)
+        self.update() # to show above text in window
+        return self.lbl
 
-    def no_model(self):
-        self.withdraw()
-        messagebox.showwarning(title = "Active model not found",
-                           message = "Close all ETABS instances if any open and reopen target file first")
-        self.exit()  
+    def assign(self,event):
+        """This function is called only when ok button is pressed""" 
+
+        SapModel = self.myETABSObject.SapModel
+        file_path = SapModel.GetModelFilename()
+        base_name = os.path.basename(file_path)[:-4]
+        self.thresh = float(self.entry2.get()) 
+        self.frame_2.destroy()
+        self.lbl_1 = self.label_fn("Active file is {0}.".format(base_name),row = 0)
+        self.backup(file_path) # backup function
+        self.lbl_2 = self.label_fn("Backup created in file root directory.",row = 1)
+        self.del_ns(SapModel) # heart of program
+        if not self.asked:
+            print("why you here?")
+            self.cont_yesno()
 
     def backup(self,file_path):
         # model backup
@@ -73,13 +98,6 @@ class Input(Tk):
             pass
         os.chdir(".//_backup")
         copy2(file_path,new_file_name)
-
-    def label_fn(self,text,row,column = 0):
-        self.lbl = Label(self.frame_1,text = text,width = 50,anchor="w",)
-        self.lbl.grid(row = row,column=column)
-        self.lbl.config(font=self.font_size)
-        self.update() # to show above text in window
-        return self.lbl
 
     def del_ns(self,SapModel):
         #assumptions
@@ -174,49 +192,38 @@ class Input(Tk):
         #===============================================================================================================
         thresh_data = pd.concat(data)
         if thresh_data.empty:
-            self.lbl_4 = self.label_fn("All columns have del_ns less than {0}.".format(self.thresh),row = 4)
-            self.exit()
-        problem_frames = thresh_data.Unique_Label.unique()
-        #===============================================================================================================
-        self.lbl_4 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)),row = 4)
-        for frame in problem_frames:
-            SapModel.FrameObj.SetSelected(frame,True)
-        self.lbl_5 = self.label_fn("Check columns selected in the model.",row = 5)
-        #===============================================================================================================
-        # we need to reset our code back to ACI-14
-        SapModel.DesignConcrete.SetCode(cur_code)
-        SapModel.View.RefreshView(0)
+            self.lbl_4 = self.label_fn("All columns have del_ns less than {0}".format(self.thresh),row = 4)
+            self.asked = self.cont_yesno()
+        else:
+            problem_frames = thresh_data.Unique_Label.unique()
+            #===============================================================================================================
+            self.lbl_4 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)),row = 4)
+            for frame in problem_frames:
+                SapModel.FrameObj.SetSelected(frame,True)
+            self.lbl_5 = self.label_fn("Check columns selected in the model.",row = 5)
+            #===============================================================================================================
+            # we need to reset our code back to ACI-14
+            SapModel.DesignConcrete.SetCode(cur_code)
+            SapModel.View.RefreshView(0)
 
-    def assign(self,event):
-        """This function is called only when ok button is pressed""" 
-
-        SapModel = self.myETABSObject.SapModel
-        file_path = SapModel.GetModelFilename()
-        base_name = os.path.basename(file_path)[:-4]
-        self.thresh = float(self.entry2.get()) 
-
-        self.frame_2.destroy()
-        
-        lbl_1 = self.label_fn("Active file is {0}.".format(base_name),row = 0)
-
-        self.backup(file_path) # backup function
-
-        lbl_2 = self.label_fn("Backup created in file root directory.",row = 1)
-        
-        self.del_ns(SapModel) # heart of program
-
+    def cont_yesno(self):
         yes = messagebox.askyesno(title = "Failing columns selected",
         message = "Do you wish to continue?")
         if not yes:
             self.exit()
         else:
-            lbl_1.destroy()
-            lbl_2.destroy()
+            self.lbl_1.destroy()
+            self.lbl_2.destroy()
             self.lbl_3.destroy()
             self.lbl_4.destroy()
-            self.lbl_5.destroy()
-            self.thresh_input()
-        
+            # exception to deal with all column safe scenario
+            try:
+                self.lbl_5.destroy()
+            except:
+                pass
+            self.thresh_input() 
+            return True
+
     def exit(self):
         # exception for call from "no model"
         try:
