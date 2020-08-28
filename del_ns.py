@@ -19,7 +19,7 @@ class Input(Tk):
         self.title("Del_ns")
         self.iconbitmap("icon.ico")
         self.font_size = ("Courier", 16)
-        self.asked = False #whether user has been given an option or not
+        self.safe = False # to assume that columns are not safe.
         self.thresh_input()    
 
     def attach_to_instance(self):
@@ -80,9 +80,6 @@ class Input(Tk):
         self.backup(file_path) # backup function
         self.lbl_2 = self.label_fn("Backup created in file root directory.",row = 1)
         self.del_ns(SapModel) # heart of program
-        if not self.asked:
-            print("why you here?")
-            self.cont_yesno()
 
     def backup(self,file_path):
         # model backup
@@ -193,8 +190,10 @@ class Input(Tk):
         thresh_data = pd.concat(data)
         if thresh_data.empty:
             self.lbl_4 = self.label_fn("All columns have del_ns less than {0}".format(self.thresh),row = 4)
-            self.asked = self.cont_yesno()
+            self.safe = True
+            self.cont_yesno()
         else:
+            self.safe = False
             problem_frames = thresh_data.Unique_Label.unique()
             #===============================================================================================================
             self.lbl_4 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)),row = 4)
@@ -205,6 +204,8 @@ class Input(Tk):
             # we need to reset our code back to ACI-14
             SapModel.DesignConcrete.SetCode(cur_code)
             SapModel.View.RefreshView(0)
+        if not self.safe:
+            self.cont_yesno()
 
     def cont_yesno(self):
         yes = messagebox.askyesno(title = "Failing columns selected",
@@ -222,7 +223,6 @@ class Input(Tk):
             except:
                 pass
             self.thresh_input() 
-            return True
 
     def exit(self):
         # exception for call from "no model"
