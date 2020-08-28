@@ -110,7 +110,9 @@ class Input(Tk):
         SapModel.SelectObj.ClearSelection() 
         #===============================================================================================================
         #run model (this will create the analysis model)
+        self.lbl_analysis = self.label_fn("Analysing ........................")
         SapModel.Analyze.RunAnalysis()
+        self.lbl_analysiscomplete = self.label_fn("Analyses complete.")
         #===============================================================================================================
         # selecting load cases for output. Otherwise error will be generated for SapModel.Results.FrameForce
         _,combos,_ = SapModel.RespCombo.GetNameList(1, " ")
@@ -220,14 +222,17 @@ class Input(Tk):
     def cont_yesno(self):
         yes = messagebox.askyesno(title = "Failing columns selected",
         message = "Do you wish to continue?")
+        self.lbl_analysis.destroy()
+        self.lbl_analysiscomplete.destroy()
         self.lbl_1.destroy()
         self.lbl_2.destroy()
         self.lbl_3.destroy()
+        # exception for if concrete columns present
         try:
             self.lbl_4.destroy()
         except:
             pass
-        # exception to deal with all column safe scenario
+        # exception to deal with no concrete columns
         try:
             self.lbl_5.destroy()
             self.lbl_6.destroy()
