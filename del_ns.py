@@ -32,7 +32,7 @@ class Input(Tk):
     def no_model(self):
         self.withdraw()
         messagebox.showwarning(title = "Active model not found",
-                           message = "Close all ETABS instances if any open and reopen target file first")
+                           message = "Close all ETABS instances if any open and reopen the target file first.")
         self.exit() 
 
     def thresh_input(self):
@@ -51,7 +51,8 @@ class Input(Tk):
         self.label.grid(row = 0,column = 0)
         self.label.config(font=self.font_size)
 
-        self.entry2 = Scale(self.frame_2,from_ = 1,to = 2,orient = HORIZONTAL,resolution=0.1) # our del_ns calc only for > 1
+        # our del_ns calc only for > 1
+        self.entry2 = Scale(self.frame_2,from_ = 1,to = 2,orient = HORIZONTAL,resolution=0.1) 
         self.entry2.set(1.4)
         self.entry2.grid(row = 0,column = 1)
 
@@ -219,28 +220,34 @@ class Input(Tk):
     def cont_yesno(self):
         yes = messagebox.askyesno(title = "Failing columns selected",
         message = "Do you wish to continue?")
+        self.lbl_1.destroy()
+        self.lbl_2.destroy()
+        self.lbl_3.destroy()
+        try:
+            self.lbl_4.destroy()
+        except:
+            pass
+        # exception to deal with all column safe scenario
+        try:
+            self.lbl_5.destroy()
+            self.lbl_6.destroy()
+        except:
+            pass
+
         if not yes:
             self.exit()
         else:
-            self.lbl_1.destroy()
-            self.lbl_2.destroy()
-            self.lbl_3.destroy()
-
-            # exception to deal with all column safe scenario
-            try:
-                self.lbl_5.destroy()
-                self.lbl_6.destroy()
-            except:
-                pass
             self.thresh_input() 
 
     def exit(self):
         # exception for call from "no model"
-        try:
-            self.label_fn("Exiting application...................")
-            self.update()
-        except:
-            pass
+        text = "Note!!\nThis program calculates Del_ns only for load\ncombinations starting with \"U\" and ending" \
+                                                                                    " not\n with \"O\""
+        self.lbl = Label(self.frame_1,text = text,width = 50,anchor="w",)
+        self.lbl.grid(row = 0,column=0)
+        self.lbl.config(font=self.font_size)
+        self.update()
+
         messagebox.showinfo(title = "Help",message = "For trouble shooting contact me through sbz5677@gmail.com ")
         self.destroy()
         exit()
