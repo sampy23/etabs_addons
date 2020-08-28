@@ -36,7 +36,7 @@ class Input(Tk):
         self.exit() 
 
     def thresh_input(self):
-        windo_size = "600x200"
+        windo_size = "600x220"
         height = int(windo_size[4:])
         width = int(windo_size[:3])
         self.geometry(windo_size)
