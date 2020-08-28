@@ -19,7 +19,6 @@ class Input(Tk):
         self.title("Del_ns")
         self.iconbitmap("icon.ico")
         self.font_size = ("Courier", 16)
-        self.safe = False # to assume that columns are not safe.
         self.thresh_input()    
 
     def attach_to_instance(self):
@@ -70,8 +69,11 @@ class Input(Tk):
 
     def assign(self,event):
         """This function is called only when ok button is pressed""" 
-
-        SapModel = self.myETABSObject.SapModel
+        try:
+            SapModel = self.myETABSObject.SapModel
+        except (OSError, comtypes.COMError):
+            self.no_model()
+            
         file_path = SapModel.GetModelFilename()
         base_name = os.path.basename(file_path)[:-4]
         self.thresh = float(self.entry2.get()) 
