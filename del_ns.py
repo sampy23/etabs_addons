@@ -73,22 +73,22 @@ class Input(Tk):
     def assign(self,event):
         """This function is called only when ok button is pressed""" 
         try:
-            SapModel = self.myETABSObject.SapModel
+            self.SapModel = self.myETABSObject.SapModel
         except (OSError, comtypes.COMError):
             self.no_model()
 
-        file_path = SapModel.GetModelFilename()
+        file_path = self.SapModel.GetModelFilename()
         base_name = os.path.basename(file_path)[:-4]
         self.thresh = float(self.entry2.get()) 
         self.frame_2.destroy()
         self.lbl_1 = self.label_fn("Active file is {0}.".format(base_name))
         self.backup(file_path) # backup function
         self.lbl_2 = self.label_fn("Backup created in file root directory.")
-        self.del_ns(SapModel) # heart of program
+        self.del_ns() # heart of program
 
     def backup(self,file_path):
         # model backup
-        # SapModel.File.Save(file_path)
+        # self.SapModel.File.Save(file_path)
         os.chdir(os.path.dirname(file_path))
         file_name_ext = os.path.basename(file_path)
         file_name,ext = os.path.splitext(file_name_ext)
@@ -101,34 +101,34 @@ class Input(Tk):
         os.chdir(".//_backup")
         copy2(file_path,new_file_name)
 
-    def del_ns(self,SapModel):
+    def del_ns(self):
         #assumptions
         beta_dns =  1# code recommended value is 0.6
         #===============================================================================================================
-        SapModel.SetPresentUnits_2(4,6,2) # kN m C
-        SapModel.SetPresentUnits(6) #kn_m_C
-        SapModel.SelectObj.ClearSelection() 
+        self.curr_unit = self.SapModel.GetPresentUnits()
+        self.SapModel.SetPresentUnits(6) #kn_m_C
+        self.SapModel.SelectObj.ClearSelection() 
         #===============================================================================================================
         #run model (this will create the analysis model)
         self.lbl_analysis = self.label_fn("Analysing ........................")
-        SapModel.Analyze.RunAnalysis()
+        self.SapModel.Analyze.RunAnalysis()
         self.lbl_analysiscomplete = self.label_fn("Analyses complete.")
         #===============================================================================================================
-        # selecting load cases for output. Otherwise error will be generated for SapModel.Results.FrameForce
-        _,combos,_ = SapModel.RespCombo.GetNameList(1, " ")
-        SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
+        # selecting load cases for output. Otherwise error will be generated for self.SapModel.Results.FrameForce
+        _,combos,_ = self.SapModel.RespCombo.GetNameList(1, " ")
+        self.SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
         combos = [x for x in combos if x.startswith("U") and not x.endswith("O")]
         for combo in combos:
-            SapModel.Results.Setup.SetComboSelectedForOutput(combo,True) 
+            self.SapModel.Results.Setup.SetComboSelectedForOutput(combo,True) 
         #===============================================================================================================
-        section_data = SapModel.PropFrame.GetAllFrameProperties_2()[1:-1] # transposing data
+        section_data = self.SapModel.PropFrame.GetAllFrameProperties_2()[1:-1] # transposing data
         section_data = pd.DataFrame.from_records(section_data,).T
         section_data.columns = ["Section","Property Type Enum","t3","t2","tf","tw","t2b","tfb","Area"]
         #===============================================================================================================
         prop_frame_link = []
-        for label in SapModel.FrameObj.GetLabelNameList()[1]:
-            if SapModel.FrameObj.GetDesignOrientation(label)[0] == 1: # we are only intersted in columns
-                prop_frame_link.append([label,SapModel.FrameObj.GetSection(label)[0]])
+        for label in self.SapModel.FrameObj.GetLabelNameList()[1]:
+            if self.SapModel.FrameObj.GetDesignOrientation(label)[0] == 1: # we are only intersted in columns
+                prop_frame_link.append([label,self.SapModel.FrameObj.GetSection(label)[0]])
 
         if len(prop_frame_link) == 0:
             self.lbl_3 = self.label_fn("No columns were found in the active file.")
@@ -147,8 +147,8 @@ class Input(Tk):
         def section_fck(df,df_column):
             ls = []
             for section in df_column:
-                fck_string = SapModel.PropFrame.GetMaterial(section)[0]
-                fck = SapModel.PropMaterial.GetOConcrete(fck_string)[0]/1000 # we want in MPa
+                fck_string = self.SapModel.PropFrame.GetMaterial(section)[0]
+                fck = self.SapModel.PropMaterial.GetOConcrete(fck_string)[0]/1000 # we want in MPa
                 ls.append(fck)
             df["fck"] = ls
             return df
@@ -159,15 +159,15 @@ class Input(Tk):
         frame_data["ei_eff_22"] = (0.4 * ec * ig_22)/(1 + beta_dns)
         frame_data["ei_eff_33"] = (0.4 * ec * ig_33)/(1 + beta_dns)
         #===============================================================================================================
-        cur_code = SapModel.DesignConcrete.GetCode()[0]
-        SapModel.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
+        cur_code = self.SapModel.DesignConcrete.GetCode()[0]
+        self.SapModel.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
         problem_frames = []
         # the idea is that column with buckling issue never have del_ns < 1
         for frame in frame_data.index:
             # catching frames with more than 1 unbraced length
             # this will also filter out all steel columns
-            if (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] >= 1) or \
-                                            (SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] >= 1):
+            if (self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] >= 1) or \
+                                            (self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] >= 1):
                 problem_frames.append(frame)
         #===============================================================================================================
         f = itemgetter(1,2,5,8)
@@ -175,15 +175,15 @@ class Input(Tk):
         NumberResults = 0
         data = []
         for frame in problem_frames:
-            force_data = SapModel.Results.FrameForce(frame, ObjectElm, NumberResults)
+            force_data = self.SapModel.Results.FrameForce(frame, ObjectElm, NumberResults)
             force_data = pd.DataFrame.from_records(f(force_data)).T
             force_data.columns = ["Unique_Label","Station","Combo","P"]
             temp_data = pd.merge(frame_data,force_data,on = "Unique_Label")
             # end length offset has to be added if present
             # assuming height is in meter
-            column_unsupported = temp_data.Station.max() + SapModel.FrameObj.GetEndLengthOffset(frame)[2]
-            k_minor = SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0]
-            k_major = SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
+            column_unsupported = temp_data.Station.max() + self.SapModel.FrameObj.GetEndLengthOffset(frame)[2]
+            k_minor = self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0]
+            k_major = self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
             pc_22 = (pi ** 2 * temp_data.ei_eff_22) / (k_minor * column_unsupported) ** 2
             pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (k_major * column_unsupported) ** 2
             # Calculation of Cm is little obscure for etabs data as it tends to get muddled
@@ -211,12 +211,12 @@ class Input(Tk):
                 #===============================================================================================================
                 self.lbl_5 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)))
                 for frame in problem_frames:
-                    SapModel.FrameObj.SetSelected(frame,True)
+                    self.SapModel.FrameObj.SetSelected(frame,True)
                 self.lbl_6 = self.label_fn("Check columns selected in the model.")
                 #===============================================================================================================
                 # we need to reset our code back to ACI-14
-                SapModel.DesignConcrete.SetCode(cur_code)
-                SapModel.View.RefreshView(0)
+                self.SapModel.DesignConcrete.SetCode(cur_code)
+                self.SapModel.View.RefreshView(0)
             if not self.safe:
                 self.cont_yesno()
 
@@ -256,6 +256,7 @@ class Input(Tk):
 
         messagebox.showinfo(title = "Help",message = "For trouble shooting contact me through sbz5677@gmail.com ")
         self.destroy()
+        self.SapModel.SetPresentUnits(self.curr_unit) 
         exit()
         
 if __name__ == '__main__':
