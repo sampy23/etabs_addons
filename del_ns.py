@@ -181,11 +181,13 @@ class Input(Tk):
             temp_data = pd.merge(frame_data,force_data,on = "Unique_Label")
             # end length offset has to be added if present
             # assuming height is in meter
-            column_unsupported = temp_data.Station.max() + self.SapModel.FrameObj.GetEndLengthOffset(frame)[2]
-            k_minor = self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0]
-            k_major = self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
-            pc_22 = (pi ** 2 * temp_data.ei_eff_22) / (k_minor * column_unsupported) ** 2
-            pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (k_major * column_unsupported) ** 2
+            column_length = temp_data.Station.max() + self.SapModel.FrameObj.GetEndLengthOffset(frame)[2]
+            unbrac_minor = self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0]
+            unbrac_major = self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
+            column_unsupported_minor = unbrac_minor * column_length
+            column_unsupported_major = unbrac_minor * column_length
+            pc_22 = (pi ** 2 * temp_data.ei_eff_22) / (1 * column_unsupported_minor) ** 2
+            pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (1 * column_unsupported_major) ** 2
             # Calculation of Cm is little obscure for etabs data as it tends to get muddled
             # so for a conservative approach we take Cm as 1
             temp_data["del_ns_22"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_22))
