@@ -17,7 +17,6 @@ class Input(Tk):
         self.attach_to_instance()
 
         self.title("Del_ns")
-        self.iconbitmap("icon.ico")
         self.font_size = ("Courier", 16)
         self.row = 0
         self.thresh_input() 
