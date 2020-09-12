@@ -234,15 +234,15 @@ class Input(Tk):
         for frame in frame_data.index:
             # catching frames with more than 1 unbraced length
             # this will also filter out all steel columns
-            if (self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] >= 1) or \
-                                            (self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] >= 1):
+            if (self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] >= 0) or \
+                                        (self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] >= 0):
                 problem_frames.append(frame)
         #===============================================================================================================
         f = itemgetter(1,2,5,8,12,13)
         ObjectElm = 0
         NumberResults = 0
         data = []
-        for frame in problem_frames[:2]:
+        for frame in problem_frames:
             force_data = self.SapModel.Results.FrameForce(frame, ObjectElm, NumberResults)
             force_data = pd.DataFrame.from_records(f(force_data)).T
             force_data.columns = ["Unique_Label","Station","Combo","P","M2","M3"]
@@ -277,6 +277,8 @@ class Input(Tk):
         # concrete columns found
         else:
             thresh_data = pd.concat(data)
+            thresh_data = thresh_data.drop(["Property Type Enum","t3","t2","tf","tw","t2b","tfb","Area","fck",\
+                                                                                    "ei_eff_22","ei_eff_33"],axis = 1)
             # for checking
             with pd.ExcelWriter("DEL_NS.xlsx") as writer:
                 thresh_data.to_excel(writer,index = False)
