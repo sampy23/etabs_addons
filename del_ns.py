@@ -152,6 +152,75 @@ class Input(Tk):
             df["fck"] = ls
             return df
 
+        def pairing(abs_max,search_end):
+            r"""
+            This function pairs absolute maximum with its minima by following algorithm
+            1. Look for sign of abs_max
+            2. Now if search end has value with one positive and another negative chose the value with sign opposite to absolute max
+            1. If both values at end are of different sign we can simply chose max or min depending on sign of abs_max
+            4. If both values at end are of same sign but not matching abs_max choose absolute maximum of those two
+            5. If both values at end are of same sign but matching abs_max choose absolute minimum of those two
+            """
+            if abs_max >= 0: # we have + sign, so we look at other end for -ve
+                if ((search_end[0] < 0) and (search_end[1]  >= 0)) | ((search_end[0] >= 0) and (search_end[1]  < 0)): # we have one neg and one pos sign
+                    abs_min = min(search_end) # we need a - sign number, a simple min will do for us
+                elif (search_end[0] and search_end[1]) < 0: # if both are negative
+                    abs_min = max(search_end,key=abs)
+                elif (search_end[0] and search_end[1]) >= 0: # if both are positive
+                    abs_min = min(search_end)
+            else:
+                if ((search_end[0] < 0) and (search_end[1]  >= 0)) | ((search_end[0] >= 0) and (search_end[1]  < 0)): # we have one neg one pos sign
+                    abs_min = max(search_end) # we need a + sign number, a simple max will do for us
+                elif (search_end[0] and search_end[1]) >= 0: # if both are positive
+                    abs_min = max(search_end)
+                elif (search_end[0] and search_end[1]) < 0: # if both are negative
+                    abs_min = min(search_end,key = abs)
+                
+            return abs_min
+
+        def env_cm(end1,end2):
+            """When we have EQ cases or envelope cases we will have maximum and minimum cases. In that case we need to combine them.
+            How ETABS combine them is ambigious. Here it is done in two ways. Out of this two values i take maximum cm to be on conservative side:
+                1. Find absolute maximum  and second absolte maximum. These two form denominator for our calculation
+                2. Remaining two values are paired using pairing function following a particular algorithm
+            """
+            temp = end1 + end2
+            abs_max_1 = sorted(temp,reverse = True,key=abs)[0]
+            abs_max_2 = sorted(temp,reverse = True,key=abs)[1]
+            
+            temp.remove(abs_max_1)
+            temp.remove(abs_max_2)
+            
+            denom = [abs_max_1,abs_max_2]
+            
+            abs_min_1 = pairing(abs_max_1,temp)
+            temp.remove(abs_min_1)
+            abs_min_2 = temp[0]
+            cm_1 = 0.6 + 0.4 * abs_min_1 / abs_max_1
+            cm_2 = 0.6 + 0.4 * abs_min_2 / abs_max_2
+
+            cm = max (cm_1,cm_2) # this will not always match etabs value but atleast will be sensivbly conservative
+            return cm
+
+        def apply_cm(x):
+            if len(x) == 6: # for sway cases
+                end1 = [x.iloc[0,1],x.iloc[3,1]]
+                end2 = [x.iloc[2,1],x.iloc[5,1]]
+                cm = env_cm(end1,end2)
+            else: 
+                # this function returns absolute max value in the group by preserving the sign
+                sign_abs_max_moment =   max(x.iloc[:,1].min(), x.iloc[:,1].max(), key=abs) 
+                sign_abs_min_moment =  min(x.iloc[:,1].min(), x.iloc[:,1].max(), key=abs)
+                abs_max_end_moment = x.iloc[[0,2],1].abs().max()
+                abs_max_middle_moment = abs(x.iloc[1,1])
+                if abs_max_end_moment <= abs_max_middle_moment:
+                    cm = 1 # if end moments are lesser no correction need to applied
+                else:
+                    cm = 0.6 + 0.4 * sign_abs_min_moment/sign_abs_max_moment
+                    
+            x["CM"] = cm
+            return x
+
         frame_data = section_fck(frame_data,frame_data["Section"])
         ec = 4700 *frame_data["fck"].pow(1/2) * 1000 # ec in kn/m2
         # etabs preferred equation.
@@ -169,14 +238,14 @@ class Input(Tk):
                                             (self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] >= 1):
                 problem_frames.append(frame)
         #===============================================================================================================
-        f = itemgetter(1,2,5,8)
+        f = itemgetter(1,2,5,8,12,13)
         ObjectElm = 0
         NumberResults = 0
         data = []
-        for frame in problem_frames:
+        for frame in problem_frames[:2]:
             force_data = self.SapModel.Results.FrameForce(frame, ObjectElm, NumberResults)
             force_data = pd.DataFrame.from_records(f(force_data)).T
-            force_data.columns = ["Unique_Label","Station","Combo","P"]
+            force_data.columns = ["Unique_Label","Station","Combo","P","M2","M3"]
             temp_data = pd.merge(frame_data,force_data,on = "Unique_Label")
             # end length offset has to be added if present
             # assuming height is in meter
@@ -188,10 +257,16 @@ class Input(Tk):
             pc_22 = (pi ** 2 * temp_data.ei_eff_22) / (1 * column_unsupported_minor) ** 2
             pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (1 * column_unsupported_major) ** 2
             # Calculation of Cm is little obscure for etabs data as it tends to get muddled
+            temp_data["CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(apply_cm).CM
+            temp_data["CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(apply_cm).CM
             # so for a conservative approach we take Cm as 1
-            temp_data["del_ns_22"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_22))
-            temp_data["del_ns_33"] = 1 / (1 - temp_data.P.abs()/(0.75 * pc_33))
-      
+            temp_data["del_ns_22"] = temp_data["CM22"] / (1 - temp_data.P.abs()/(0.75 * pc_22))
+            temp_data["del_ns_33"] = temp_data["CM33"] / (1 - temp_data.P.abs()/(0.75 * pc_33))
+
+            # minimum value of del_ns is 1
+            temp_data.loc[temp_data.del_ns_22 < 1,"del_ns_22"] = 1
+            temp_data.loc[temp_data.del_ns_33 < 1,"del_ns_33"] = 1
+
             thresh_data = temp_data[(temp_data["del_ns_22"] > self.thresh) | (temp_data["del_ns_33"] > self.thresh)]
             data.append(thresh_data)
         #===============================================================================================================
@@ -202,6 +277,9 @@ class Input(Tk):
         # concrete columns found
         else:
             thresh_data = pd.concat(data)
+            # for checking
+            with pd.ExcelWriter("DEL_NS.xlsx") as writer:
+                thresh_data.to_excel(writer,index = False)
             if thresh_data.empty:
                 self.lbl_5 = self.label_fn("All columns have del_ns less than {0}".format(self.thresh))
                 self.safe = True
