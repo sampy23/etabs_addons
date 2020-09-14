@@ -152,32 +152,6 @@ class Input(Tk):
             df["fck"] = ls
             return df
 
-        def pairing(abs_max,search_end):
-            r"""
-            This function pairs absolute maximum with its minima by following algorithm
-            1. Look for sign of abs_max
-            2. Now if search end has value with one positive and another negative chose the value with sign opposite to absolute max
-            1. If both values at end are of different sign we can simply chose max or min depending on sign of abs_max
-            4. If both values at end are of same sign but not matching abs_max choose absolute maximum of those two
-            5. If both values at end are of same sign but matching abs_max choose absolute minimum of those two
-            """
-            if abs_max >= 0: # we have + sign, so we look at other end for -ve
-                if ((search_end[0] < 0) and (search_end[1]  >= 0)) | ((search_end[0] >= 0) and (search_end[1]  < 0)): # we have one neg and one pos sign
-                    abs_min = min(search_end) # we need a - sign number, a simple min will do for us
-                elif (search_end[0] and search_end[1]) < 0: # if both are negative
-                    abs_min = max(search_end,key=abs)
-                elif (search_end[0] and search_end[1]) >= 0: # if both are positive
-                    abs_min = min(search_end)
-            else:
-                if ((search_end[0] < 0) and (search_end[1]  >= 0)) | ((search_end[0] >= 0) and (search_end[1]  < 0)): # we have one neg one pos sign
-                    abs_min = max(search_end) # we need a + sign number, a simple max will do for us
-                elif (search_end[0] and search_end[1]) >= 0: # if both are positive
-                    abs_min = max(search_end)
-                elif (search_end[0] and search_end[1]) < 0: # if both are negative
-                    abs_min = min(search_end,key = abs)
-                
-            return abs_min
-
         def env_cm(end1,end2):
             """When we have EQ cases or envelope cases we will have maximum and minimum cases. In that case we need to combine them.
             How ETABS combine them is ambigious. Here it is done in two ways. Out of this two values i take maximum cm to be on conservative side:
@@ -186,20 +160,21 @@ class Input(Tk):
             """
             temp = end1 + end2
             abs_max_1 = sorted(temp,reverse = True,key=abs)[0]
-            abs_max_2 = sorted(temp,reverse = True,key=abs)[1]
-            
-            temp.remove(abs_max_1)
-            temp.remove(abs_max_2)
-            
-            denom = [abs_max_1,abs_max_2]
-            
-            abs_min_1 = pairing(abs_max_1,temp)
-            temp.remove(abs_min_1)
-            abs_min_2 = temp[0]
-            cm_1 = 0.6 + 0.4 * abs_min_1 / abs_max_1
-            cm_2 = 0.6 + 0.4 * abs_min_2 / abs_max_2
 
-            cm = max (cm_1,cm_2) # this will not always match etabs value but atleast will be sensivbly conservative
+            indx = temp.index(abs_max_1)
+
+            if indx < 2:
+                search_end = end2
+            else:
+                search_end = end1
+
+            if abs_max_1 == 0:
+                return 1
+            
+            cm_1 = 0.6 + 0.4 * search_end[0] / abs_max_1
+            cm_2 = 0.6 + 0.4 * search_end[1]  / abs_max_1
+
+            cm = max (cm_1,cm_2) # this will not always match etabs but matches code requirement
             return cm
 
         def apply_cm(x):
@@ -226,23 +201,16 @@ class Input(Tk):
         # etabs preferred equation.
         frame_data["ei_eff_22"] = (0.4 * ec * ig_22)/(1 + beta_dns)
         frame_data["ei_eff_33"] = (0.4 * ec * ig_33)/(1 + beta_dns)
+        frame_data = frame_data[frame_data.ei_eff_22 != 0] # filtering out steel columns
         #===============================================================================================================
         cur_code = self.SapModel.DesignConcrete.GetCode()[0]
         self.SapModel.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
-        problem_frames = []
-        # the idea is that column with buckling issue never have del_ns < 1
-        for frame in frame_data.index:
-            # catching frames with more than 1 unbraced length
-            # this will also filter out all steel columns
-            if (self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0] >= 0) or \
-                                        (self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0] >= 0):
-                problem_frames.append(frame)
         #===============================================================================================================
         f = itemgetter(1,2,5,8,12,13)
         ObjectElm = 0
         NumberResults = 0
         data = []
-        for frame in problem_frames:
+        for frame in frame_data.index:
             force_data = self.SapModel.Results.FrameForce(frame, ObjectElm, NumberResults)
             force_data = pd.DataFrame.from_records(f(force_data)).T
             force_data.columns = ["Unique_Label","Station","Combo","P","M2","M3"]
