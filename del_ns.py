@@ -17,8 +17,7 @@ class Input(Tk):
         self.attach_to_instance()
 
         self.title("Del_ns")
-        self.font_size = ("Courier", 16)
-        self.row = 0
+        self.font_size = ("Courier", 12)
         self.thresh_input() 
 
     def attach_to_instance(self):
@@ -34,43 +33,64 @@ class Input(Tk):
                            message = "Close all ETABS instances if any open and reopen the target file first.")
         self.exit() 
 
+    def label_fn_frame_1(self,text,frame = None):
+
+        self.lbl = Label(self.frame_1,text = text,width = 50,anchor="w")
+        self.lbl.grid(row = self.row_1,column=0)
+        self.lbl.config(font=self.font_size)
+        self.update() # to show above text in window
+        self.row_1 += 1
+        return self.lbl
+
+    def label_fn_frame_2(self,text,frame = None):
+    
+        self.lbl = Label(self.frame_2,text = text,width = 50)
+        self.lbl.grid(row = self.row_2,column=0)
+        self.lbl.config(font=self.font_size)
+        self.update() # to show above text in window
+        self.row_2 += 1
+        return self.lbl
+
     def thresh_input(self):
-        windo_size = "600x220"
-        height = int(windo_size[4:])
-        width = int(windo_size[:3])
-        self.geometry(windo_size)
-        
-        self.frame_1 = LabelFrame(self,height=height,width=width)
-        self.frame_2 = LabelFrame(self,height=height,width=width,text="Input",padx = 5,pady = 5)
-        self.frame_1.grid(row=0,column=0)
-        self.frame_1.grid_propagate(0) # this is for a fixed frame size
-        self.frame_2.place(in_=self.frame_1,anchor="c", relx=.5, rely=.5)
+
+        self.row_1 = 0
+        self.row_2 = 1
+
+        self.frame_1 = LabelFrame(self,text="Output")
+        self.frame_2 = LabelFrame(self,text="Input")
+        self.frame_2.grid(row=0,column=0)
 
         self.label = Label(self.frame_2,text = "\ndel_ns (upper limit) =")
         self.label.grid(row = 0,column = 0)
         self.label.config(font=self.font_size)
 
         # our del_ns calc only for > 1
-        self.entry2 = Scale(self.frame_2,from_ = 1,to = 2,orient = HORIZONTAL,resolution=0.1) 
-        self.entry2.set(1.4)
-        self.entry2.grid(row = 0,column = 1)
+        self.entry1 = Scale(self.frame_2,from_ = 1,to = 2,orient = HORIZONTAL,resolution=0.1) 
+        self.entry1.set(1.4)
+        self.entry1.grid(row = 0,column = 1)
+
+# enter the the first few letters of load combination to calculate del_ns.
+        self.lbl = self.label_fn_frame_2("Calculate for load combo starting with:")
+        self.entry2 = Entry(self.frame_2,width=4)
+        self.entry2.grid(row = self.row_2-1,column=1,columnspan = 1,padx=10,pady=10)
+        self.entry2.config(font=self.font_size)
+# enter the the last few letters of load combination to be excluded for o for overstrength combinations
+        self.lbl = self.label_fn_frame_2("Exclude load combo ending with:")
+        self.entry3 = Entry(self.frame_2,width=4)
+        self.entry3.grid(row = self.row_2-1,column=1,columnspan = 1,padx=10,pady=10)
+        self.entry3.config(font=self.font_size)
 
         self.button = Button(self.frame_2,text = "OK",width=8,relief = 'raised')
         self.button.bind('<Button-1>', self.assign)
         self.bind('<Return>', self.assign)
-        self.button.grid(row = 1,column=0,columnspan = 2,padx=10,pady=10)
+        self.button.grid(row = 3,column=0,columnspan = 2,padx=10,pady=10)
         self.button.config(font=self.font_size)
-
-    def label_fn(self,text):
-        self.lbl = Label(self.frame_1,text = text,width = 50,anchor="w",)
-        self.lbl.grid(row = self.row,column=0)
-        self.lbl.config(font=self.font_size)
-        self.update() # to show above text in window
-        self.row += 1
-        return self.lbl
 
     def assign(self,event):
         """This function is called only when ok button is pressed""" 
+        self.load_starts = self.entry2.get()
+        self.load_notends = self.entry3.get()
+
         try:
             self.SapModel = self.myETABSObject.SapModel
         except (OSError, comtypes.COMError):
@@ -78,11 +98,12 @@ class Input(Tk):
 
         file_path = self.SapModel.GetModelFilename()
         base_name = os.path.basename(file_path)[:-4]
-        self.thresh = float(self.entry2.get()) 
+        self.thresh = float(self.entry1.get()) 
         self.frame_2.destroy()
-        self.lbl_1 = self.label_fn("Active file is {0}.".format(base_name))
+        self.frame_1.grid(row=0,column=0)
+        self.lbl_1 = self.label_fn_frame_1("Active file is {0}.".format(base_name))
         self.backup(file_path) # backup function
-        self.lbl_2 = self.label_fn("Backup created in file root directory.")
+        self.lbl_2 = self.label_fn_frame_1("Backup created in file root directory.")
         self.del_ns() # heart of program
 
     def backup(self,file_path):
@@ -109,14 +130,14 @@ class Input(Tk):
         self.SapModel.SelectObj.ClearSelection() 
         #===============================================================================================================
         #run model (this will create the analysis model)
-        self.lbl_analysis = self.label_fn("Analysing ........................")
+        self.lbl_analysis = self.label_fn_frame_1("Analysing ........................")
         self.SapModel.Analyze.RunAnalysis()
-        self.lbl_analysiscomplete = self.label_fn("Analyses complete.")
+        self.lbl_analysiscomplete = self.label_fn_frame_1("Analyses complete.")
         #===============================================================================================================
         # selecting load cases for output. Otherwise error will be generated for self.SapModel.Results.FrameForce
         _,combos,_ = self.SapModel.RespCombo.GetNameList(1, " ")
         self.SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
-        combos = [x for x in combos if x.startswith("U") and not x.endswith("O")]
+        combos = [x for x in combos if x.startswith(self.load_starts) and not x.endswith(self.load_notends)]
         for combo in combos:
             self.SapModel.Results.Setup.SetComboSelectedForOutput(combo,True) 
         #===============================================================================================================
@@ -130,10 +151,10 @@ class Input(Tk):
                 prop_frame_link.append([label,self.SapModel.FrameObj.GetSection(label)[0]])
 
         if len(prop_frame_link) == 0:
-            self.lbl_3 = self.label_fn("No columns were found in the active file.")
+            self.lbl_3 = self.label_fn_frame_1("No columns were found in the active file.")
             self.exit()
         else:
-            self.lbl_3 = self.label_fn("{0} columns found in the model.".format(len(prop_frame_link)))
+            self.lbl_3 = self.label_fn_frame_1("{0} columns found in the model.".format(len(prop_frame_link)))
 
         prop_frame_link = pd.DataFrame.from_records(prop_frame_link)
         prop_frame_link.columns = ["Unique_Label","Section"]
@@ -153,10 +174,10 @@ class Input(Tk):
             return df
 
         def env_cm(end1,end2):
-            """When we have EQ cases or envelope cases we will have maximum and minimum cases. In that case we need to combine them.
-            How ETABS combine them is ambigious. Here it is done in two ways. Out of this two values i take maximum cm to be on conservative side:
-                1. Find absolute maximum  and second absolte maximum. These two form denominator for our calculation
-                2. Remaining two values are paired using pairing function following a particular algorithm
+            """When we have EQ cases or envelope cases we will have maximum and minimum cases. 
+            In that case we need to combine them.
+            How ETABS combine them is ambiguous. So we follow what code recommended:
+                1. Find absolute maximum at one end and absolute minimum at other end to calculate Cm
             """
             temp = end1 + end2
             abs_max_1 = sorted(temp,reverse = True,key=abs)[0]
@@ -240,7 +261,7 @@ class Input(Tk):
         #===============================================================================================================
         # no concrete columns
         if len(data) == 0:
-            self.lbl_4 = self.label_fn("No concrete columns found in the active model.")
+            self.lbl_4 = self.label_fn_frame_1("No concrete columns found in the active model.")
             self.cont_yesno()
         # concrete columns found
         else:
@@ -251,17 +272,17 @@ class Input(Tk):
             with pd.ExcelWriter("DEL_NS.xlsx") as writer:
                 thresh_data.to_excel(writer,index = False)
             if thresh_data.empty:
-                self.lbl_5 = self.label_fn("All columns have del_ns less than {0}".format(self.thresh))
+                self.lbl_5 = self.label_fn_frame_1("All columns have del_ns less than {0}".format(self.thresh))
                 self.safe = True
                 self.cont_yesno()
             else:
                 self.safe = False
                 problem_frames = thresh_data.Unique_Label.unique()
                 #===============================================================================================================
-                self.lbl_5 = self.label_fn("{0} columns likely to have buckling issues.".format(len(problem_frames)))
+                self.lbl_5 = self.label_fn_frame_1("{0} columns likely to have buckling issues.".format(len(problem_frames)))
                 for frame in problem_frames:
                     self.SapModel.FrameObj.SetSelected(frame,True)
-                self.lbl_6 = self.label_fn("Check columns selected in the model.")
+                self.lbl_6 = self.label_fn_frame_1("Check columns selected in the model.")
                 #===============================================================================================================
                 # we need to reset our code back to ACI-14
                 self.SapModel.DesignConcrete.SetCode(cur_code)
@@ -292,6 +313,7 @@ class Input(Tk):
         if not yes:
             self.exit()
         else:
+            self.frame_1.destroy()
             self.thresh_input() 
 
     def exit(self):
