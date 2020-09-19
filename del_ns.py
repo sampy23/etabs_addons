@@ -271,9 +271,18 @@ class Input(Tk):
             thresh_data = pd.concat(data)
             thresh_data = thresh_data.drop(["Property Type Enum","t3","t2","tf","tw","t2b","tfb","Area","fck",\
                                                                                     "ei_eff_22","ei_eff_33"],axis = 1)
-            # for checking
-            with pd.ExcelWriter("DEL_NS.xlsx") as writer:
-                thresh_data.to_excel(writer,index = False)
+            # for visual checking
+            try:
+                with pd.ExcelWriter("DEL_NS.xlsx") as writer:
+                    thresh_data.to_excel(writer,index = False)
+            except PermissionError:
+                text = "\"DEL_NS.xlsx\" cannot be generated as it is open"
+                self.file_open = self.label_fn_frame_1(text)
+                self.file_open.config(fg="red")
+                # self.lbl = Label(self.frame_1,text = text,width = 50,anchor="w",)
+                # self.lbl.grid(row = 0,column=0)
+                # self.lbl.config(font=self.font_size)
+                # self.update()
             if thresh_data.empty:
                 self.lbl_5 = self.label_fn_frame_1("All columns have del_ns less than {0}".format(self.thresh))
                 self.safe = True
@@ -298,6 +307,7 @@ class Input(Tk):
         message = "Do you wish to continue?")
         self.lbl_analysis.destroy()
         self.lbl_analysiscomplete.destroy()
+        self.file_open.destroy()
         self.lbl_1.destroy()
         self.lbl_2.destroy()
         self.lbl_3.destroy()
