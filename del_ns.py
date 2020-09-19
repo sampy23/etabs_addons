@@ -279,10 +279,7 @@ class Input(Tk):
                 text = "\"DEL_NS.xlsx\" cannot be generated as it is open"
                 self.file_open = self.label_fn_frame_1(text)
                 self.file_open.config(fg="red")
-                # self.lbl = Label(self.frame_1,text = text,width = 50,anchor="w",)
-                # self.lbl.grid(row = 0,column=0)
-                # self.lbl.config(font=self.font_size)
-                # self.update()
+
             if thresh_data.empty:
                 self.lbl_5 = self.label_fn_frame_1("All columns have del_ns less than {0}".format(self.thresh))
                 self.safe = True
@@ -331,7 +328,6 @@ class Input(Tk):
 
     def exit(self):
         # exception for call from "no model"
-        messagebox.showinfo(title = "Help",message = "For trouble shooting contact me through sbz5677@gmail.com ")
         self.destroy()
         self.SapModel.SetPresentUnits(self.curr_unit) 
         exit()
