@@ -321,13 +321,6 @@ class Input(Tk):
 
     def exit(self):
         # exception for call from "no model"
-        text = "Note!!\nThis program calculates Del_ns only for load\ncombinations starting with \"U\" and ending" \
-                                                                                    " not\n with \"O\""
-        self.lbl = Label(self.frame_1,text = text,width = 50,anchor="w",)
-        self.lbl.grid(row = 0,column=0)
-        self.lbl.config(font=self.font_size)
-        self.update()
-
         messagebox.showinfo(title = "Help",message = "For trouble shooting contact me through sbz5677@gmail.com ")
         self.destroy()
         self.SapModel.SetPresentUnits(self.curr_unit) 
