@@ -304,7 +304,11 @@ class Input(Tk):
         message = "Do you wish to continue?")
         self.lbl_analysis.destroy()
         self.lbl_analysiscomplete.destroy()
-        self.file_open.destroy()
+        # exception if files is closed
+        try:
+            self.file_open.destroy()
+        except:
+            pass
         self.lbl_1.destroy()
         self.lbl_2.destroy()
         self.lbl_3.destroy()
