@@ -71,12 +71,14 @@ class Input(Tk):
 
 # enter the the first few letters of load combination to calculate del_ns.
         self.lbl = self.label_fn_frame_2("Calculate for load combo starting with:")
-        self.entry2 = Entry(self.frame_2,width=4)
+        self.entry2 = Entry(self.frame_2,width=20)
+        self.entry2.insert(1,"U")
         self.entry2.grid(row = self.row_2-1,column=1,columnspan = 1,padx=10,pady=10)
         self.entry2.config(font=self.font_size)
 # enter the the last few letters of load combination to be excluded for o for overstrength combinations
         self.lbl = self.label_fn_frame_2("Exclude load combo ending with:")
-        self.entry3 = Entry(self.frame_2,width=4)
+        self.entry3 = Entry(self.frame_2,width=20)
+        self.entry3.insert(1,"O")
         self.entry3.grid(row = self.row_2-1,column=1,columnspan = 1,padx=10,pady=10)
         self.entry3.config(font=self.font_size)
 
@@ -88,8 +90,8 @@ class Input(Tk):
 
     def assign(self,event):
         """This function is called only when ok button is pressed""" 
-        self.load_starts = self.entry2.get()
-        self.load_notends = self.entry3.get()
+        self.load_starts = self.entry2.get().lower()
+        self.load_notends = self.entry3.get().lower()
 
         try:
             self.SapModel = self.myETABSObject.SapModel
@@ -137,7 +139,8 @@ class Input(Tk):
         # selecting load cases for output. Otherwise error will be generated for self.SapModel.Results.FrameForce
         _,combos,_ = self.SapModel.RespCombo.GetNameList(1, " ")
         self.SapModel.Results.Setup.DeselectAllCasesAndCombosForOutput()
-        combos = [x for x in combos if x.startswith(self.load_starts) and not x.endswith(self.load_notends)]
+        combos = \
+            [x for x in combos if x.lower().startswith(self.load_starts) and not x.lower().endswith(self.load_notends)]
         for combo in combos:
             self.SapModel.Results.Setup.SetComboSelectedForOutput(combo,True) 
         #===============================================================================================================
@@ -278,12 +281,12 @@ class Input(Tk):
             else:
                 self.safe = False
                 problem_frames = thresh_data.Unique_Label.unique()
-                #===============================================================================================================
+                #=======================================================================================================
                 self.lbl_5 = self.label_fn_frame_1("{0} columns likely to have buckling issues.".format(len(problem_frames)))
                 for frame in problem_frames:
                     self.SapModel.FrameObj.SetSelected(frame,True)
                 self.lbl_6 = self.label_fn_frame_1("Check columns selected in the model.")
-                #===============================================================================================================
+                #=======================================================================================================
                 # we need to reset our code back to ACI-14
                 self.SapModel.DesignConcrete.SetCode(cur_code)
                 self.SapModel.View.RefreshView(0)
