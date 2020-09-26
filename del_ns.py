@@ -109,14 +109,13 @@ class Input(Tk):
         self.del_ns() # heart of program
 
     def backup(self,file_path):
+        file_path = self.SapModel.GetModelFilename()
+        os.chdir(os.path.dirname(file_path))
         # model backup
         try:
             os.mkdir(".//_backup")
         except FileExistsError:
             pass
-
-        file_path = self.SapModel.GetModelFilename()
-        os.chdir(os.path.dirname(file_path))
         file_dir = os.path.dirname(file_path)
         file_name_ext = os.path.basename(file_path)
         file_name,ext = os.path.splitext(file_name_ext)
@@ -220,7 +219,7 @@ class Input(Tk):
                 else:
                     cm = 0.6 + 0.4 * sign_abs_min_moment/sign_abs_max_moment
                     
-            x["CM"] = cm
+            x.loc[:,"CM"] = cm
             return x
 
         frame_data = section_fck(frame_data,frame_data["Section"])
@@ -243,12 +242,15 @@ class Input(Tk):
             force_data_list.append(force_data)
         force_data = pd.concat(force_data_list,axis=0)    
         #===============================================================================================================
+        self.SapModel.File.Save(self.new_file_path)
         cur_code = self.SapModel.DesignConcrete.GetCode()[0]
         self.SapModel.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
         #===============================================================================================================
+        frame_force_data = pd.merge(frame_data,force_data,on = "Unique_Label")
         data = []
         for frame in frame_data.index:
-            temp_data = pd.merge(frame_data,force_data,on = "Unique_Label")
+            temp_data = frame_force_data[frame_force_data.Unique_Label == frame]
+            # print(temp_data)
             # end length offset has to be added if present
             # assuming height is in meter
             column_length = temp_data.Station.max() + self.SapModel.FrameObj.GetEndLengthOffset(frame)[2]
@@ -259,11 +261,11 @@ class Input(Tk):
             pc_22 = (pi ** 2 * temp_data.ei_eff_22) / (1 * column_unsupported_minor) ** 2
             pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (1 * column_unsupported_major) ** 2
             # Calculation of Cm is little obscure for etabs data as it tends to get muddled
-            temp_data["CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(apply_cm).CM
-            temp_data["CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(apply_cm).CM
+            temp_data.loc[:,"CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(apply_cm).CM
+            temp_data.loc[:,"CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(apply_cm).CM
             # so for a conservative approach we take Cm as 1
-            temp_data["del_ns_22"] = temp_data["CM22"] / (1 - temp_data.P.abs()/(0.75 * pc_22))
-            temp_data["del_ns_33"] = temp_data["CM33"] / (1 - temp_data.P.abs()/(0.75 * pc_33))
+            temp_data.loc[:,"del_ns_22"] = temp_data["CM22"] / (1 - temp_data.P.abs()/(0.75 * pc_22))
+            temp_data.loc[:,"del_ns_33"] = temp_data["CM33"] / (1 - temp_data.P.abs()/(0.75 * pc_33))
 
             # minimum value of del_ns is 1
             temp_data.loc[temp_data.del_ns_22 < 1,"del_ns_22"] = 1
