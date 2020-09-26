@@ -110,18 +110,21 @@ class Input(Tk):
 
     def backup(self,file_path):
         # model backup
-        # self.SapModel.File.Save(file_path)
-        os.chdir(os.path.dirname(file_path))
-        file_name_ext = os.path.basename(file_path)
-        file_name,ext = os.path.splitext(file_name_ext)
-        time_stamp = strftime("%Y%m%d-%H%M%S")
-        new_file_name = file_name+ "_" + time_stamp + ext
         try:
             os.mkdir(".//_backup")
         except FileExistsError:
             pass
-        os.chdir(".//_backup")
-        copy2(file_path,new_file_name)
+
+        file_path = self.SapModel.GetModelFilename()
+        os.chdir(os.path.dirname(file_path))
+        file_dir = os.path.dirname(file_path)
+        file_name_ext = os.path.basename(file_path)
+        file_name,ext = os.path.splitext(file_name_ext)
+        time_stamp = strftime("%H%M%S")
+        new_file_name = file_name+ "_" + time_stamp + ext
+        new_file_path = os.path.join("_backup",new_file_name)
+        self.new_file_path = os.path.join(file_dir,new_file_path)
+        copy2(file_path,new_file_path)
 
     def del_ns(self):
         #assumptions
