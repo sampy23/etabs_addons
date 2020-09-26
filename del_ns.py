@@ -229,18 +229,25 @@ class Input(Tk):
         frame_data["ei_eff_22"] = (0.4 * ec * ig_22)/(1 + beta_dns)
         frame_data["ei_eff_33"] = (0.4 * ec * ig_33)/(1 + beta_dns)
         frame_data = frame_data[frame_data.ei_eff_22 != 0] # filtering out steel columns
-        #===============================================================================================================
-        cur_code = self.SapModel.DesignConcrete.GetCode()[0]
-        self.SapModel.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
-        #===============================================================================================================
+
         f = itemgetter(1,2,5,8,12,13)
         ObjectElm = 0
         NumberResults = 0
-        data = []
+        force_data_list = []
+        #===============================================================================================================
+        # collecting result data before saving as
         for frame in frame_data.index:
             force_data = self.SapModel.Results.FrameForce(frame, ObjectElm, NumberResults)
             force_data = pd.DataFrame.from_records(f(force_data)).T
             force_data.columns = ["Unique_Label","Station","Combo","P","M2","M3"]
+            force_data_list.append(force_data)
+        force_data = pd.concat(force_data_list,axis=0)    
+        #===============================================================================================================
+        cur_code = self.SapModel.DesignConcrete.GetCode()[0]
+        self.SapModel.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
+        #===============================================================================================================
+        data = []
+        for frame in frame_data.index:
             temp_data = pd.merge(frame_data,force_data,on = "Unique_Label")
             # end length offset has to be added if present
             # assuming height is in meter
