@@ -242,14 +242,14 @@ class Input(Tk):
             force_data_list.append(force_data)
         force_data = pd.concat(force_data_list,axis=0)    
         #===============================================================================================================
-        self.SapModel.File.Save(self.new_file_path)
+        # self.SapModel.File.Save(self.new_file_path)
         cur_code = self.SapModel.DesignConcrete.GetCode()[0]
         self.SapModel.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
         #===============================================================================================================
         frame_force_data = pd.merge(frame_data,force_data,on = "Unique_Label")
         data = []
         for frame in frame_data.index:
-            temp_data = frame_force_data[frame_force_data.Unique_Label == frame]
+            temp_data = frame_force_data[frame_force_data.Unique_Label == frame].copy() #to avoid SettingWithCopyWarning
             # print(temp_data)
             # end length offset has to be added if present
             # assuming height is in meter
@@ -260,17 +260,14 @@ class Input(Tk):
             column_unsupported_major = unbrac_minor * column_length
             pc_22 = (pi ** 2 * temp_data.ei_eff_22) / (1 * column_unsupported_minor) ** 2
             pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (1 * column_unsupported_major) ** 2
-            # Calculation of Cm is little obscure for etabs data as it tends to get muddled
             temp_data.loc[:,"CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(apply_cm).CM
             temp_data.loc[:,"CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(apply_cm).CM
             # so for a conservative approach we take Cm as 1
             temp_data.loc[:,"del_ns_22"] = temp_data["CM22"] / (1 - temp_data.P.abs()/(0.75 * pc_22))
             temp_data.loc[:,"del_ns_33"] = temp_data["CM33"] / (1 - temp_data.P.abs()/(0.75 * pc_33))
-
             # minimum value of del_ns is 1
             temp_data.loc[temp_data.del_ns_22 < 1,"del_ns_22"] = 1
             temp_data.loc[temp_data.del_ns_33 < 1,"del_ns_33"] = 1
-
             thresh_data = temp_data[(temp_data["del_ns_22"] > self.thresh) | (temp_data["del_ns_33"] > self.thresh)]
             data.append(thresh_data)
         #===============================================================================================================
