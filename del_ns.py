@@ -98,33 +98,32 @@ class Input(Tk):
         except (OSError, comtypes.COMError):
             self.no_model()
 
-        file_path = self.SapModel.GetModelFilename()
-        base_name = os.path.basename(file_path)[:-4]
+        self.model_path = self.SapModel.GetModelFilename()
+        base_name = os.path.basename(self.model_path)[:-4]
         self.thresh = float(self.entry1.get()) 
         self.frame_2.destroy()
         self.frame_1.grid(row=0,column=0)
         self.lbl_1 = self.label_fn_frame_1("Active file is {0}.".format(base_name))
-        self.backup(file_path) # backup function
+        self.backup(self.model_path) # backup function
         self.lbl_2 = self.label_fn_frame_1("Backup created in file root directory.")
         self.del_ns() # heart of program
 
-    def backup(self,file_path):
-        file_path = self.SapModel.GetModelFilename()
-        os.chdir(os.path.dirname(file_path))
+    def backup(self,model_path):
+        os.chdir(os.path.dirname(model_path))
         # model backup
         try:
             os.mkdir(".//_backup")
         except FileExistsError:
             pass
-        file_dir = os.path.dirname(file_path)
-        file_name_ext = os.path.basename(file_path)
+        file_dir = os.path.dirname(model_path)
+        file_name_ext = os.path.basename(model_path)
         file_name,ext = os.path.splitext(file_name_ext)
         time_stamp = strftime("%H%M%S")
         new_file_name = file_name+ "_" + time_stamp + ext
-        new_file_path = os.path.join("_backup",new_file_name)
-        self.new_file_path = os.path.join(file_dir,new_file_path)
-        copy2(file_path,new_file_path)
-
+        new_model_path = os.path.join("_backup",new_file_name)
+        self.new_model_path = os.path.join(file_dir,new_model_path)
+        copy2(model_path,new_model_path)
+        
     def del_ns(self):
         #assumptions
         beta_dns =  1# code recommended value is 0.6
@@ -234,7 +233,9 @@ class Input(Tk):
         NumberResults = 0
         force_data_list = []
         #===============================================================================================================
-        # collecting result data before saving as
+        # collecting result data before saving as model. This action is required because we are setting a different code.
+        # setting and resetting code affects design preferences. Workaround this problem is collect all data
+        # set code and then save as new model to collect unbraced length and then return to original model
         for frame in frame_data.index:
             force_data = self.SapModel.Results.FrameForce(frame, ObjectElm, NumberResults)
             force_data = pd.DataFrame.from_records(f(force_data)).T
@@ -242,7 +243,7 @@ class Input(Tk):
             force_data_list.append(force_data)
         force_data = pd.concat(force_data_list,axis=0)    
         #===============================================================================================================
-        # self.SapModel.File.Save(self.new_file_path)
+        self.SapModel.File.Save(self.new_model_path)
         cur_code = self.SapModel.DesignConcrete.GetCode()[0]
         self.SapModel.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
         #===============================================================================================================
@@ -250,7 +251,6 @@ class Input(Tk):
         data = []
         for frame in frame_data.index:
             temp_data = frame_force_data[frame_force_data.Unique_Label == frame].copy() #to avoid SettingWithCopyWarning
-            # print(temp_data)
             # end length offset has to be added if present
             # assuming height is in meter
             column_length = temp_data.Station.max() + self.SapModel.FrameObj.GetEndLengthOffset(frame)[2]
@@ -270,6 +270,9 @@ class Input(Tk):
             temp_data.loc[temp_data.del_ns_33 < 1,"del_ns_33"] = 1
             thresh_data = temp_data[(temp_data["del_ns_22"] > self.thresh) | (temp_data["del_ns_33"] > self.thresh)]
             data.append(thresh_data)
+        #===============================================================================================================
+        self.after(3000) #wait for 3 seconds to prevent rushing of interface
+        self.SapModel.File.OpenFile(self.model_path) #get back to our model
         #===============================================================================================================
         # no concrete columns
         if len(data) == 0:
