@@ -7,7 +7,7 @@ import comtypes.client
 from math import pi
 import pandas as pd
 from shutil import copy2
-from time import strftime
+import time
 from operator import itemgetter
 
 class Input(Tk):
@@ -118,7 +118,7 @@ class Input(Tk):
         file_dir = os.path.dirname(model_path)
         file_name_ext = os.path.basename(model_path)
         file_name,ext = os.path.splitext(file_name_ext)
-        time_stamp = strftime("%H%M%S")
+        time_stamp = time.strftime("%H%M%S")
         new_file_name = file_name+ "_" + time_stamp + ext
         new_model_path = os.path.join("_backup",new_file_name)
         self.new_model_path = os.path.join(file_dir,new_model_path)
@@ -159,6 +159,9 @@ class Input(Tk):
             self.exit()
         else:
             self.lbl_3 = self.label_fn_frame_1("{0} columns found in the model.".format(len(prop_frame_link)))
+            self.lbl_3 = self.label_fn_frame_1("Calculating del_ns............")
+            #start time
+            start = time.time()
 
         prop_frame_link = pd.DataFrame.from_records(prop_frame_link)
         prop_frame_link.columns = ["Unique_Label","Section"]
@@ -300,10 +303,14 @@ class Input(Tk):
                 self.safe = False
                 problem_frames = thresh_data.Unique_Label.unique()
                 #=======================================================================================================
-                self.lbl_5 = self.label_fn_frame_1("{0} columns likely to have buckling issues.".format(len(problem_frames)))
+                self.lbl_5 = self.label_fn_frame_1("{0} columns likely to have buckling issues."\
+                                                                                        .format(len(problem_frames)))
                 for frame in problem_frames:
                     self.SapModel.FrameObj.SetSelected(frame,True)
+                end = time.time() # end time of core calculation
                 self.lbl_6 = self.label_fn_frame_1("Check columns selected in the model.")
+                self.lbl_6 = self.label_fn_frame_1("Time taken for core calculation in seconds is {0}"\
+                                                                                            .format(round(end-start)))
                 #=======================================================================================================
                 # we need to reset our code back to ACI-14
                 self.SapModel.DesignConcrete.SetCode(cur_code)
