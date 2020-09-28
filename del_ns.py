@@ -313,7 +313,6 @@ class Input(Tk):
                                                                                             .format(round(end-start)))
                 #=======================================================================================================
                 # we need to reset our code back to ACI-14
-                self.SapModel.DesignConcrete.SetCode(cur_code)
                 self.SapModel.View.RefreshView(0)
             if not self.safe:
                 self.cont_yesno()
