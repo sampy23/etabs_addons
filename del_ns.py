@@ -109,6 +109,7 @@ class Input(Tk):
         self.del_ns() # heart of program
 
     def backup(self,model_path):
+        # self.SapModel.File.Save(model_path) #save file before taking backup, but this deletes program results
         os.chdir(os.path.dirname(model_path))
         # model backup
         try:
@@ -126,7 +127,7 @@ class Input(Tk):
         
     def del_ns(self):
         #assumptions
-        beta_dns =  1# code recommended value is 0.6
+        beta_dns =  0.8# code recommended value is 0.6
         #===============================================================================================================
         self.curr_unit = self.SapModel.GetPresentUnits()
         self.SapModel.SetPresentUnits(6) #kn_m_C
@@ -134,7 +135,7 @@ class Input(Tk):
         #===============================================================================================================
         #run model (this will create the analysis model)
         self.lbl_analysis = self.label_fn_frame_1("Analysing ........................")
-        self.SapModel.Analyze.RunAnalysis()
+        ret = self.SapModel.Analyze.RunAnalysis()
         self.lbl_analysiscomplete = self.label_fn_frame_1("Analyses complete.")
         #===============================================================================================================
         # selecting load cases for output. Otherwise error will be generated for self.SapModel.Results.FrameForce
@@ -246,9 +247,21 @@ class Input(Tk):
             force_data_list.append(force_data)
         force_data = pd.concat(force_data_list,axis=0)    
         #===============================================================================================================
-        self.SapModel.File.Save(self.new_model_path)
-        cur_code = self.SapModel.DesignConcrete.GetCode()[0]
-        self.SapModel.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
+        ProgramPath = r"C:\Program Files\Computers and Structures\ETABS 17\ETABS.exe"
+        #create API helper object
+        helper = comtypes.client.CreateObject('ETABSv17.Helper')
+        helper = helper.QueryInterface(comtypes.gen.ETABSv17.cHelper)
+        self.myETABSObject_dummy = helper.CreateObject(ProgramPath)
+        #start ETABS application
+        self.myETABSObject_dummy.ApplicationStart()
+        #Hide the current program
+        self.myETABSObject_dummy.Hide() 
+        
+        #create SapModel object
+        self.SapModel_dummy = self.myETABSObject_dummy.SapModel
+        self.SapModel_dummy.File.OpenFile(self.new_model_path) #get back to our model
+        self.SapModel_dummy.SetPresentUnits(6) #kn_m_C
+        self.SapModel_dummy.DesignConcrete.SetCode("ACI 318-08") # catching over write for ACI - 11 not defined in python
         #===============================================================================================================
         frame_force_data = pd.merge(frame_data,force_data,on = "Unique_Label")
         data = []
@@ -256,13 +269,15 @@ class Input(Tk):
             temp_data = frame_force_data[frame_force_data.Unique_Label == frame].copy() #to avoid SettingWithCopyWarning
             # end length offset has to be added if present
             # assuming height is in meter
-            column_length = temp_data.Station.max() + self.SapModel.FrameObj.GetEndLengthOffset(frame)[2]
-            unbrac_minor = self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0]
-            unbrac_major = self.SapModel.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
+            column_length = temp_data.Station.max() + self.SapModel_dummy.FrameObj.GetEndLengthOffset(frame)[2]
+            unbrac_minor = self.SapModel_dummy.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0]
+            unbrac_major = self.SapModel_dummy.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
             column_unsupported_minor = unbrac_minor * column_length
             column_unsupported_major = unbrac_minor * column_length
             pc_22 = (pi ** 2 * temp_data.ei_eff_22) / (1 * column_unsupported_minor) ** 2
             pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (1 * column_unsupported_major) ** 2
+            temp_data.loc[:,"p_critical22"] = pc_22
+            temp_data.loc[:,"p_critical33"] = pc_33
             temp_data.loc[:,"CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(apply_cm).CM
             temp_data.loc[:,"CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(apply_cm).CM
             # so for a conservative approach we take Cm as 1
@@ -273,9 +288,6 @@ class Input(Tk):
             temp_data.loc[temp_data.del_ns_33 < 1,"del_ns_33"] = 1
             thresh_data = temp_data[(temp_data["del_ns_22"] > self.thresh) | (temp_data["del_ns_33"] > self.thresh)]
             data.append(thresh_data)
-        #===============================================================================================================
-        self.after(3000) #wait for 3 seconds to prevent rushing of interface
-        self.SapModel.File.OpenFile(self.model_path) #get back to our model
         #===============================================================================================================
         # no concrete columns
         if len(data) == 0:
@@ -312,7 +324,7 @@ class Input(Tk):
                 self.lbl_6 = self.label_fn_frame_1("Time taken for core calculation in seconds is {0}"\
                                                                                             .format(round(end-start)))
                 #=======================================================================================================
-                # we need to reset our code back to ACI-14
+                self.after(3000) #inorder to prevent rushing of interface
                 self.SapModel.View.RefreshView(0)
             if not self.safe:
                 self.cont_yesno()
@@ -322,6 +334,7 @@ class Input(Tk):
         message = "Do you wish to continue?")
         self.lbl_analysis.destroy()
         self.lbl_analysiscomplete.destroy()
+        self.myETABSObject_dummy.ApplicationExit(False) # we donot wish to save the backup file
         # exception if files is closed
         try:
             self.file_open.destroy()
