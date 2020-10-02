@@ -109,7 +109,11 @@ class Input(Tk):
         self.del_ns() # heart of program
 
     def backup(self,model_path):
-        # self.SapModel.File.Save(model_path) #save file before taking backup, but this deletes program results
+        if 4 in set(self.SapModel.Analyze.GetCaseStatus()[2]): 
+            #atleast one case has run so no need to save the file and lose analysis data
+            pass
+        else:
+            self.SapModel.File.Save(model_path) #save file before taking backup, but this deletes program results
         os.chdir(os.path.dirname(model_path))
         # model backup
         try:
