@@ -128,7 +128,6 @@ class Input(Tk):
         self.load_starts = self.entry2.get().lower()
         self.load_notends = self.entry3.get().lower()
         # ok button
-        def wait(): self.button_pushed = True
         self.button = Button(self.frame_2,text = "OK",width=8,relief = 'raised',command=combo_selected)
         self.button.grid(row = 3,column=0,columnspan = 2,padx=10,pady=10)
         self.button.config(font=self.font_size)
