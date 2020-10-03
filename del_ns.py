@@ -1,6 +1,6 @@
 """GUI program to interact with ETABS to calculate del_ns"""
 
-from tkinter import Button, Tk, HORIZONTAL,Label,Label,Entry,Scale,LabelFrame,messagebox,DISABLED,NORMAL
+from tkinter import Button, Tk, HORIZONTAL,Label,Label,Entry,Scale,LabelFrame,messagebox,DISABLED,NORMAL,IntVar
 from sys import exit
 import os
 import comtypes.client
@@ -64,34 +64,19 @@ class Input(Tk):
         self.entry1 = Scale(self.frame_2,from_ = 1,to = 2,orient = HORIZONTAL,resolution=0.1) 
         self.entry1.set(1.4)
         self.entry1.grid(row = 0,column = 1)
-        # enter the the first few letters of load combination to calculate del_ns.
-        self.lbl = self.label_fn_frame_2("Calculate for load combo starting with:")
-        self.entry2 = Entry(self.frame_2,width=20)
-        self.entry2.insert(1,"U")
-        self.entry2.grid(row = self.row_2-1,column=1,columnspan = 1,padx=10,pady=10)
-        self.entry2.config(font=self.font_size)
-        # enter the the last few letters of load combination to be excluded for o for overstrength combinations
-        self.lbl = self.label_fn_frame_2("Exclude load combo ending with:")
-        self.entry3 = Entry(self.frame_2,width=20)
-        self.entry3.insert(1,"O")
-        self.entry3.grid(row = self.row_2-1,column=1,columnspan = 1,padx=10,pady=10)
-        self.entry3.config(font=self.font_size)
-
-        self.button = Button(self.frame_2,text = "FAST",width=8,relief = 'raised',fg = "green")
-        self.button.bind('<Button-1>', self.assign_fast)
+        self.button_fast = Button(self.frame_2,text = "FAST",width=8,relief = 'raised',fg = "green")
+        self.button_fast.bind('<Button-1>', self.assign_fast)
         self.bind('<Return>', self.assign_fast)
-        self.button.grid(row = 3,column=0,columnspan = 1,padx=10,pady=10)
-        self.button.config(font=self.font_size)
-
-        self.button = Button(self.frame_2,text = "SLOW",width=8,relief = 'raised',fg = "red")
-        self.button.bind('<Button-1>', self.assign_slow)
+        self.button_fast.grid(row = 3,column=0,columnspan = 1,padx=10,pady=10)
+        self.button_fast.config(font=self.font_size)
+        # button for slow input
+        self.button_slow = Button(self.frame_2,text = "SLOW",width=8,relief = 'raised',fg = "red")
+        self.button_slow.bind('<Button-1>', self.assign_slow)
         self.bind('<Return>', self.assign_slow)
-        self.button.grid(row = 3,column=1,columnspan = 1,padx=10,pady=10)
-        self.button.config(font=self.font_size)
+        self.button_slow.grid(row = 3,column=1,columnspan = 1,padx=10,pady=10)
+        self.button_slow.config(font=self.font_size)
     def assign_fast(self,event):
-        """This function is called only when ok button is pressed""" 
-        self.load_starts = self.entry2.get().lower()
-        self.load_notends = self.entry3.get().lower()
+        """This function is called only when fast button is pressed""" 
 
         try:
             self.SapModel = self.myETABSObject.SapModel
@@ -108,24 +93,46 @@ class Input(Tk):
         self.lbl_2 = self.label_fn_frame_1("Backup created in file root directory.")
         self.del_ns_fast() # heart of program       
     def assign_slow(self,event):
-        """This function is called only when ok button is pressed""" 
+        """This function is called only when slow button is pressed""" 
+        def combo_selected():
+            try:
+                self.SapModel = self.myETABSObject.SapModel
+            except (OSError, comtypes.COMError):
+                self.no_model()
+
+            self.model_path = self.SapModel.GetModelFilename()
+            base_name = os.path.basename(self.model_path)[:-4]
+            self.thresh = float(self.entry1.get()) 
+            self.frame_2.destroy()
+            self.frame_1.grid(row=0,column=0)
+            self.lbl_1 = self.label_fn_frame_1("Active file is {0}.".format(base_name))
+            self.backup(self.model_path) # backup function
+            self.lbl_2 = self.label_fn_frame_1("Backup created in file root directory.")
+            self.del_ns_slow() # heart of program
+
+        self.button_fast.destroy()
+        self.button_slow.destroy()
+
+        # enter the the first few letters of load combination to calculate del_ns.
+        self.lbl = self.label_fn_frame_2("Calculate for load combo starting with:")
+        self.entry2 = Entry(self.frame_2,width=20)
+        self.entry2.insert(1,"U")
+        self.entry2.grid(row = self.row_2-1,column=1,columnspan = 1,padx=10,pady=10)
+        self.entry2.config(font=self.font_size)
+        # enter the the last few letters of load combination to be excluded for o for overstrength combinations
+        self.lbl = self.label_fn_frame_2("Exclude load combo ending with:")
+        self.entry3 = Entry(self.frame_2,width=20)
+        self.entry3.insert(1,"O")
+        self.entry3.grid(row = self.row_2-1,column=1,columnspan = 1,padx=10,pady=10)
+        self.entry3.config(font=self.font_size)
         self.load_starts = self.entry2.get().lower()
         self.load_notends = self.entry3.get().lower()
-
-        try:
-            self.SapModel = self.myETABSObject.SapModel
-        except (OSError, comtypes.COMError):
-            self.no_model()
-
-        self.model_path = self.SapModel.GetModelFilename()
-        base_name = os.path.basename(self.model_path)[:-4]
-        self.thresh = float(self.entry1.get()) 
-        self.frame_2.destroy()
-        self.frame_1.grid(row=0,column=0)
-        self.lbl_1 = self.label_fn_frame_1("Active file is {0}.".format(base_name))
-        self.backup(self.model_path) # backup function
-        self.lbl_2 = self.label_fn_frame_1("Backup created in file root directory.")
-        self.del_ns_slow() # heart of program
+        # ok button
+        def wait(): self.button_pushed = True
+        self.button = Button(self.frame_2,text = "OK",width=8,relief = 'raised',command=combo_selected)
+        self.button.grid(row = 3,column=0,columnspan = 2,padx=10,pady=10)
+        self.button.config(font=self.font_size)
+ 
     def backup(self,model_path):
         if 4 in set(self.SapModel.Analyze.GetCaseStatus()[2]): 
             #atleast one case has run so no need to save the file and lose analysis data
@@ -329,6 +336,7 @@ class Input(Tk):
 
             if thresh_data.empty:
                 self.lbl_5 = self.label_fn_frame_1("All columns have del_ns less than {0}".format(self.thresh))
+                self.lbl_5.config(fg="green")
                 self.safe = True
                 self.cont_yesno()
             else:
@@ -337,6 +345,7 @@ class Input(Tk):
                 #=======================================================================================================
                 self.lbl_5 = self.label_fn_frame_1("{0} columns likely to have buckling issues."\
                                                                                         .format(len(problem_frames)))
+                self.lbl_5.config(fg="red")
                 for frame in problem_frames:
                     self.SapModel.FrameObj.SetSelected(frame,True)
                 end = time.time() # end time of core calculation
@@ -531,6 +540,7 @@ class Input(Tk):
 
             if thresh_data.empty:
                 self.lbl_5 = self.label_fn_frame_1("All columns have del_ns less than {0}".format(self.thresh))
+                self.lbl_5.config(fg="green")
                 self.safe = True
                 self.cont_yesno()
             else:
@@ -539,6 +549,7 @@ class Input(Tk):
                 #=======================================================================================================
                 self.lbl_5 = self.label_fn_frame_1("{0} columns likely to have buckling issues."\
                                                                                         .format(len(problem_frames)))
+                self.lbl_5.config(fg="red")
                 for frame in problem_frames:
                     self.SapModel.FrameObj.SetSelected(frame,True)
                 end = time.time() # end time of core calculation
