@@ -95,6 +95,8 @@ class Input(Tk):
     def assign_slow(self,event):
         """This function is called only when slow button is pressed""" 
         def combo_selected():
+            self.load_starts = self.entry2.get().lower()
+            self.load_notends = self.entry3.get().lower()
             try:
                 self.SapModel = self.myETABSObject.SapModel
             except (OSError, comtypes.COMError):
@@ -125,8 +127,6 @@ class Input(Tk):
         self.entry3.insert(1,"O")
         self.entry3.grid(row = self.row_2-1,column=1,columnspan = 1,padx=10,pady=10)
         self.entry3.config(font=self.font_size)
-        self.load_starts = self.entry2.get().lower()
-        self.load_notends = self.entry3.get().lower()
         # ok button
         self.button = Button(self.frame_2,text = "OK",width=8,relief = 'raised',command=combo_selected)
         self.button.grid(row = 3,column=0,columnspan = 2,padx=10,pady=10)
