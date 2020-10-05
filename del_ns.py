@@ -299,7 +299,7 @@ class Input(Tk):
             unbrac_minor = self.SapModel_dummy.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 4)[0]
             unbrac_major = self.SapModel_dummy.DesignConcrete.ACI318_08_IBC2009.GetOverwrite(frame, 3)[0]
             column_unsupported_minor = unbrac_minor * column_length
-            column_unsupported_major = unbrac_minor * column_length
+            column_unsupported_major = unbrac_major * column_length
             pc_22 = (pi ** 2 * temp_data.ei_eff_22) / (1 * column_unsupported_minor) ** 2
             pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (1 * column_unsupported_major) ** 2
             temp_data.loc[:,"p_critical22"] = pc_22
