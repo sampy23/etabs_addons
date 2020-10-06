@@ -12,6 +12,7 @@ from operator import itemgetter
 
 class Input(Tk):
     def __init__(self):
+        """Initialise the class Input"""
         super().__init__() # initialise the superclass Tk
 
         self.attach_to_instance()
@@ -21,18 +22,20 @@ class Input(Tk):
         self.font_size = ("Courier", 12)
         self.thresh_input() 
     def attach_to_instance(self):
+        """Attaches to an existing ETABS application"""
         try:
             #get the active ETABS object
             self.myETABSObject = comtypes.client.GetActiveObject("CSI.ETABS.API.ETABSObject") 
         except (OSError, comtypes.COMError):
             self.no_model()
     def no_model(self):
+        """To handle no ETABS model open exception"""
         self.withdraw()
         messagebox.showwarning(title = "Active model not found",
                            message = "Close all ETABS instances if any open and reopen the target file first.")
         self.exit() 
     def label_fn_frame_1(self,text,frame = None):
-
+        """Function to push text onto frame 1"""
         self.lbl = Label(self.frame_1,text = text,width = 50,anchor="w")
         self.lbl.grid(row = self.row_1,column=0)
         self.lbl.config(font=self.font_size)
@@ -40,7 +43,7 @@ class Input(Tk):
         self.row_1 += 1
         return self.lbl
     def label_fn_frame_2(self,text,frame = None):
-    
+        """Function to push text onto frame 2"""
         self.lbl = Label(self.frame_2,text = text,width = 50)
         self.lbl.grid(row = self.row_2,column=0)
         self.lbl.config(font=self.font_size)
@@ -48,7 +51,7 @@ class Input(Tk):
         self.row_2 += 1
         return self.lbl
     def thresh_input(self):
-
+        """Produces a slider for user to input threshold value for del_ns, frames below which values will be ignored"""
         self.row_1 = 0
         self.row_2 = 1
 
@@ -64,6 +67,7 @@ class Input(Tk):
         self.entry1 = Scale(self.frame_2,from_ = 1,to = 2,orient = HORIZONTAL,resolution=0.1) 
         self.entry1.set(1.4)
         self.entry1.grid(row = 0,column = 1)
+        # button for slow input
         self.button_fast = Button(self.frame_2,text = "FAST",width=8,relief = 'raised',fg = "green")
         self.button_fast.bind('<Button-1>', self.assign_fast)
         self.bind('<Return>', self.assign_fast)
@@ -133,7 +137,8 @@ class Input(Tk):
         self.button.config(font=self.font_size)
  
     def backup(self,model_path):
-        if 4 in set(self.SapModel.Analyze.GetCaseStatus()[2]): 
+        """Function to create backup of attached ETABS"""
+        if 4 in set(self.SapModel.Analyze.GetCaseStatus()[2]): # 4 indicates presence of run case
             #atleast one case has run so no need to save the file and lose analysis data
             pass
         else:
@@ -151,8 +156,65 @@ class Input(Tk):
         new_file_name = file_name+ "_" + time_stamp + ext
         new_model_path = os.path.join("_backup",new_file_name)
         self.new_model_path = os.path.join(file_dir,new_model_path)
-        copy2(model_path,new_model_path)   
+        copy2(model_path,new_model_path)  
+
+    def section_fck(self,df,df_column):
+        ls = []
+        for section in df_column:
+            fck_string = self.SapModel.PropFrame.GetMaterial(section)[0]
+            fck = self.SapModel.PropMaterial.GetOConcrete(fck_string)[0]/1000 # we want in MPa
+            ls.append(fck)
+        df["fck"] = ls
+        return df
+
+    @staticmethod
+    def env_cm(end1,end2):
+        """When we have EQ cases or envelope cases we will have maximum and minimum cases. 
+        In that case we need to combine them, which is not the right thing. Instead we should be working with table
+        Column Design Forces to calculate Cm. Unfortunately that table is not accessible through API.
+        So we simply make use of what we have and follow the code requirement:
+            1. Find absolute maximum at one end and absolute minimum at other end to calculate Cm
+        """
+        temp = end1 + end2
+        abs_max_1 = sorted(temp,reverse = True,key=abs)[0]
+
+        indx = temp.index(abs_max_1)
+
+        if indx < 2:
+            search_end = end2
+        else:
+            search_end = end1
+
+        if abs_max_1 == 0:
+            return 1
+        
+        cm_1 = 0.6 + 0.4 * search_end[0] / abs_max_1
+        cm_2 = 0.6 + 0.4 * search_end[1]  / abs_max_1
+
+        cm = max (cm_1,cm_2) 
+        return cm
+
+    def apply_cm(self,x):
+        """Function that applies a series actions on pandas dataframe to generate Cm values"""
+        if len(x) == 6: # for sway cases
+            end1 = [x.iloc[0,1],x.iloc[3,1]]
+            end2 = [x.iloc[2,1],x.iloc[5,1]]
+            cm = self.env_cm(end1,end2)
+        else: 
+            # this function returns absolute max value in the group by preserving the sign
+            sign_abs_max_moment =   max(x.iloc[:,1].min(), x.iloc[:,1].max(), key=abs) 
+            sign_abs_min_moment =  min(x.iloc[:,1].min(), x.iloc[:,1].max(), key=abs)
+            abs_max_end_moment = x.iloc[[0,2],1].abs().max()
+            abs_max_middle_moment = abs(x.iloc[1,1])
+            if abs_max_end_moment <= abs_max_middle_moment:
+                cm = 1 # if end moments are lesser no correction need to applied
+            else:
+                cm = 0.6 + 0.4 * sign_abs_min_moment/sign_abs_max_moment
+                
+        x.loc[:,"CM"] = cm
+        return x
     def del_ns_fast(self):
+        """Calculation of del_ns only for those combination which produce maximum PMM ratio in frame, hence much faster"""
         #===============================================================================================================
         self.curr_unit = self.SapModel.GetPresentUnits()
         self.SapModel.SetPresentUnits(6) #kn_m_C
@@ -191,61 +253,7 @@ class Input(Tk):
         ig_22 = frame_data.t3 * pow(frame_data.t2,3) / 12 # gross moment of inertia in 22 direction
         ig_33 = frame_data.t2 * pow(frame_data.t3,3) / 12 # gross moment of inertia in 33 direction
 
-        def section_fck(df,df_column):
-            ls = []
-            for section in df_column:
-                fck_string = self.SapModel.PropFrame.GetMaterial(section)[0]
-                fck = self.SapModel.PropMaterial.GetOConcrete(fck_string)[0]/1000 # we want in MPa
-                ls.append(fck)
-            df["fck"] = ls
-            return df
-
-        def env_cm(end1,end2):
-            """When we have EQ cases or envelope cases we will have maximum and minimum cases. 
-            In that case we need to combine them, which is not the right thing. Instead we should be working with table
-            Column Design Forces to calculate Cm. Unfortunately that table is not accessible through API.
-            So we simply make use of what we have and follow the code requirement:
-                1. Find absolute maximum at one end and absolute minimum at other end to calculate Cm
-            """
-            temp = end1 + end2
-            abs_max_1 = sorted(temp,reverse = True,key=abs)[0]
-
-            indx = temp.index(abs_max_1)
-
-            if indx < 2:
-                search_end = end2
-            else:
-                search_end = end1
-
-            if abs_max_1 == 0:
-                return 1
-            
-            cm_1 = 0.6 + 0.4 * search_end[0] / abs_max_1
-            cm_2 = 0.6 + 0.4 * search_end[1]  / abs_max_1
-
-            cm = max (cm_1,cm_2) 
-            return cm
-
-        def apply_cm(x):
-            if len(x) == 6: # for sway cases
-                end1 = [x.iloc[0,1],x.iloc[3,1]]
-                end2 = [x.iloc[2,1],x.iloc[5,1]]
-                cm = env_cm(end1,end2)
-            else: 
-                # this function returns absolute max value in the group by preserving the sign
-                sign_abs_max_moment =   max(x.iloc[:,1].min(), x.iloc[:,1].max(), key=abs) 
-                sign_abs_min_moment =  min(x.iloc[:,1].min(), x.iloc[:,1].max(), key=abs)
-                abs_max_end_moment = x.iloc[[0,2],1].abs().max()
-                abs_max_middle_moment = abs(x.iloc[1,1])
-                if abs_max_end_moment <= abs_max_middle_moment:
-                    cm = 1 # if end moments are lesser no correction need to applied
-                else:
-                    cm = 0.6 + 0.4 * sign_abs_min_moment/sign_abs_max_moment
-                    
-            x.loc[:,"CM"] = cm
-            return x
-
-        frame_data = section_fck(frame_data,frame_data["Section"])
+        frame_data = self.section_fck(frame_data,frame_data["Section"])
         ec = 4700 *frame_data["fck"].pow(1/2) * 1000 # ec in kn/m2
         # etabs preferred equation.
         frame_data["ei_eff_22"] = (0.4 * ec * ig_22)/(1 + self.beta_dns)
@@ -305,8 +313,8 @@ class Input(Tk):
             pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (1 * column_unsupported_major) ** 2
             temp_data.loc[:,"p_critical22"] = pc_22
             temp_data.loc[:,"p_critical33"] = pc_33
-            temp_data.loc[:,"CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(apply_cm).CM
-            temp_data.loc[:,"CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(apply_cm).CM
+            temp_data.loc[:,"CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(self.apply_cm).CM
+            temp_data.loc[:,"CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(self.apply_cm).CM
             # so for a conservative approach we take Cm as 1
             temp_data.loc[:,"del_ns_22"] = temp_data["CM22"] / (1 - temp_data.P.abs()/(0.75 * pc_22))
             temp_data.loc[:,"del_ns_33"] = temp_data["CM33"] / (1 - temp_data.P.abs()/(0.75 * pc_33))
@@ -357,8 +365,6 @@ class Input(Tk):
             if not self.safe:
                 self.cont_yesno()        
     def del_ns_slow(self):
-        #assumptions
-        #===============================================================================================================
         self.curr_unit = self.SapModel.GetPresentUnits()
         self.SapModel.SetPresentUnits(6) #kn_m_C
         self.SapModel.SelectObj.ClearSelection() 
@@ -402,61 +408,7 @@ class Input(Tk):
         ig_22 = frame_data.t3 * pow(frame_data.t2,3) / 12 # gross moment of inertia in 22 direction
         ig_33 = frame_data.t2 * pow(frame_data.t3,3) / 12 # gross moment of inertia in 33 direction
 
-        def section_fck(df,df_column):
-            ls = []
-            for section in df_column:
-                fck_string = self.SapModel.PropFrame.GetMaterial(section)[0]
-                fck = self.SapModel.PropMaterial.GetOConcrete(fck_string)[0]/1000 # we want in MPa
-                ls.append(fck)
-            df["fck"] = ls
-            return df
-
-        def env_cm(end1,end2):
-            """When we have EQ cases or envelope cases we will have maximum and minimum cases. 
-            In that case we need to combine them, which is not the right thing. Instead we should be working with table
-            Column Design Forces to calculate Cm. Unfortunately that table is not accessible through API.
-            So we simply make use of what we have and follow the code requirement:
-                1. Find absolute maximum at one end and absolute minimum at other end to calculate Cm
-            """
-            temp = end1 + end2
-            abs_max_1 = sorted(temp,reverse = True,key=abs)[0]
-
-            indx = temp.index(abs_max_1)
-
-            if indx < 2:
-                search_end = end2
-            else:
-                search_end = end1
-
-            if abs_max_1 == 0:
-                return 1
-            
-            cm_1 = 0.6 + 0.4 * search_end[0] / abs_max_1
-            cm_2 = 0.6 + 0.4 * search_end[1]  / abs_max_1
-
-            cm = max (cm_1,cm_2)
-            return cm
-
-        def apply_cm(x):
-            if len(x) == 6: # for sway cases
-                end1 = [x.iloc[0,1],x.iloc[3,1]]
-                end2 = [x.iloc[2,1],x.iloc[5,1]]
-                cm = env_cm(end1,end2)
-            else: 
-                # this function returns absolute max value in the group by preserving the sign
-                sign_abs_max_moment =   max(x.iloc[:,1].min(), x.iloc[:,1].max(), key=abs) 
-                sign_abs_min_moment =  min(x.iloc[:,1].min(), x.iloc[:,1].max(), key=abs)
-                abs_max_end_moment = x.iloc[[0,2],1].abs().max()
-                abs_max_middle_moment = abs(x.iloc[1,1])
-                if abs_max_end_moment <= abs_max_middle_moment:
-                    cm = 1 # if end moments are lesser no correction need to applied
-                else:
-                    cm = 0.6 + 0.4 * sign_abs_min_moment/sign_abs_max_moment
-                    
-            x.loc[:,"CM"] = cm
-            return x
-
-        frame_data = section_fck(frame_data,frame_data["Section"])
+        frame_data = self.section_fck(frame_data,frame_data["Section"])
         ec = 4700 *frame_data["fck"].pow(1/2) * 1000 # ec in kn/m2
         # etabs preferred equation.
         frame_data["ei_eff_22"] = (0.4 * ec * ig_22)/(1 + self.beta_dns)
@@ -509,8 +461,8 @@ class Input(Tk):
             pc_33 = (pi ** 2 * temp_data.ei_eff_33) / (1 * column_unsupported_major) ** 2
             temp_data.loc[:,"p_critical22"] = pc_22
             temp_data.loc[:,"p_critical33"] = pc_33
-            temp_data.loc[:,"CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(apply_cm).CM
-            temp_data.loc[:,"CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(apply_cm).CM
+            temp_data.loc[:,"CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(self.apply_cm).CM
+            temp_data.loc[:,"CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(self.apply_cm).CM
             # so for a conservative approach we take Cm as 1
             temp_data.loc[:,"del_ns_22"] = temp_data["CM22"] / (1 - temp_data.P.abs()/(0.75 * pc_22))
             temp_data.loc[:,"del_ns_33"] = temp_data["CM33"] / (1 - temp_data.P.abs()/(0.75 * pc_33))
