@@ -160,7 +160,7 @@ class Input(Tk):
         #===============================================================================================================
         #run model (this will create the analysis model)
         self.lbl_analysis = self.label_fn_frame_1("Analysing ........................")
-        ret = self.SapModel.Analyze.RunAnalysis()
+        self.SapModel.Analyze.RunAnalysis()
         if not self.SapModel.DesignConcrete.GetResultsAvailable():
             self.SapModel.DesignConcrete.StartDesign()
         self.lbl_analysiscomplete = self.label_fn_frame_1("Analyses complete.")
@@ -202,8 +202,9 @@ class Input(Tk):
 
         def env_cm(end1,end2):
             """When we have EQ cases or envelope cases we will have maximum and minimum cases. 
-            In that case we need to combine them.
-            How ETABS combine them is ambiguous. So we follow what code recommended:
+            In that case we need to combine them, which is not the right thing. Instead we should be working with table
+            Column Design Forces to calculate Cm. Unfortunately that table is not accessible through API.
+            So we simply make use of what we have and follow the code requirement:
                 1. Find absolute maximum at one end and absolute minimum at other end to calculate Cm
             """
             temp = end1 + end2
@@ -222,7 +223,7 @@ class Input(Tk):
             cm_1 = 0.6 + 0.4 * search_end[0] / abs_max_1
             cm_2 = 0.6 + 0.4 * search_end[1]  / abs_max_1
 
-            cm = max (cm_1,cm_2) # this will not always match etabs but matches code requirement
+            cm = max (cm_1,cm_2) 
             return cm
 
         def apply_cm(x):
@@ -352,7 +353,6 @@ class Input(Tk):
                 self.lbl_6 = self.label_fn_frame_1("Time taken for core calculation in seconds is {0}"\
                                                                                             .format(round(end-start)))
                 #=======================================================================================================
-                self.after(3000) #inorder to prevent rushing of interface
                 self.SapModel.View.RefreshView(0)
             if not self.safe:
                 self.cont_yesno()        
@@ -365,7 +365,7 @@ class Input(Tk):
         #===============================================================================================================
         #run model (this will create the analysis model)
         self.lbl_analysis = self.label_fn_frame_1("Analysing ........................")
-        ret = self.SapModel.Analyze.RunAnalysis()
+        self.SapModel.Analyze.RunAnalysis()
         self.lbl_analysiscomplete = self.label_fn_frame_1("Analyses complete.")
         #===============================================================================================================
         # selecting load cases for output. Otherwise error will be generated for self.SapModel.Results.FrameForce
@@ -413,8 +413,9 @@ class Input(Tk):
 
         def env_cm(end1,end2):
             """When we have EQ cases or envelope cases we will have maximum and minimum cases. 
-            In that case we need to combine them.
-            How ETABS combine them is ambiguous. So we follow what code recommended:
+            In that case we need to combine them, which is not the right thing. Instead we should be working with table
+            Column Design Forces to calculate Cm. Unfortunately that table is not accessible through API.
+            So we simply make use of what we have and follow the code requirement:
                 1. Find absolute maximum at one end and absolute minimum at other end to calculate Cm
             """
             temp = end1 + end2
@@ -433,7 +434,7 @@ class Input(Tk):
             cm_1 = 0.6 + 0.4 * search_end[0] / abs_max_1
             cm_2 = 0.6 + 0.4 * search_end[1]  / abs_max_1
 
-            cm = max (cm_1,cm_2) # this will not always match etabs but matches code requirement
+            cm = max (cm_1,cm_2)
             return cm
 
         def apply_cm(x):
@@ -556,7 +557,6 @@ class Input(Tk):
                 self.lbl_6 = self.label_fn_frame_1("Time taken for core calculation in seconds is {0}"\
                                                                                             .format(round(end-start)))
                 #=======================================================================================================
-                self.after(3000) #inorder to prevent rushing of interface
                 self.SapModel.View.RefreshView(0)
             if not self.safe:
                 self.cont_yesno()
