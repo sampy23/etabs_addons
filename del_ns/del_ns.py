@@ -187,7 +187,7 @@ class Input(Tk):
 
         if abs_max_1 == 0:
             return 1
-        
+        # as per 6.6.4.5.3 of ACI 318-14
         cm_1 = 0.6 + 0.4 * search_end[0] / abs_max_1
         cm_2 = 0.6 + 0.4 * search_end[1]  / abs_max_1
 
@@ -207,8 +207,10 @@ class Input(Tk):
             abs_max_end_moment = x.iloc[[0,2],1].abs().max()
             abs_max_middle_moment = abs(x.iloc[1,1])
             if abs_max_end_moment <= abs_max_middle_moment:
+                # as per 6.6.4.5.3 of ACI 318-14
                 cm = 1 # if end moments are lesser no correction need to applied
             else:
+                # as per 6.6.4.5.3 of ACI 318-14
                 cm = 0.6 + 0.4 * sign_abs_min_moment/sign_abs_max_moment
                 
         x.loc[:,"CM"] = cm
@@ -255,6 +257,7 @@ class Input(Tk):
 
         frame_data = self.section_fck(frame_data,frame_data["Section"])
         ec = 4700 *frame_data["fck"].pow(1/2) * 1000 # ec in kn/m2
+        # as per 6.6.4.4.4 of ACI 318-14
         # etabs preferred equation.
         frame_data["ei_eff_22"] = (0.4 * ec * ig_22)/(1 + self.beta_dns)
         frame_data["ei_eff_33"] = (0.4 * ec * ig_33)/(1 + self.beta_dns)
@@ -315,7 +318,7 @@ class Input(Tk):
             temp_data.loc[:,"p_critical33"] = pc_33
             temp_data.loc[:,"CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(self.apply_cm).CM
             temp_data.loc[:,"CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(self.apply_cm).CM
-            # so for a conservative approach we take Cm as 1
+            # as per 6.6.4.5.2 of ACI 318-14
             temp_data.loc[:,"del_ns_22"] = temp_data["CM22"] / (1 - temp_data.P.abs()/(0.75 * pc_22))
             temp_data.loc[:,"del_ns_33"] = temp_data["CM33"] / (1 - temp_data.P.abs()/(0.75 * pc_33))
             # minimum value of del_ns is 1
@@ -324,7 +327,7 @@ class Input(Tk):
             thresh_data = temp_data[(temp_data["del_ns_22"] > self.thresh) | (temp_data["del_ns_33"] > self.thresh)]
             data.append(thresh_data)
         #===============================================================================================================
-        # get rid of hodden file as fast as you can
+        # get rid of iodden file as fast as you can
         self.myETABSObject_dummy.ApplicationExit(False) # we donot wish to save the backup file
         # no concrete columns
         if len(data) == 0:
@@ -465,7 +468,7 @@ class Input(Tk):
             temp_data.loc[:,"p_critical33"] = pc_33
             temp_data.loc[:,"CM22"] = temp_data.groupby("Combo")[["Station","M2"]].apply(self.apply_cm).CM
             temp_data.loc[:,"CM33"] = temp_data.groupby("Combo")[["Station","M3"]].apply(self.apply_cm).CM
-            # so for a conservative approach we take Cm as 1
+            # as per 6.6.4.5.2 of ACI 318-14
             temp_data.loc[:,"del_ns_22"] = temp_data["CM22"] / (1 - temp_data.P.abs()/(0.75 * pc_22))
             temp_data.loc[:,"del_ns_33"] = temp_data["CM33"] / (1 - temp_data.P.abs()/(0.75 * pc_33))
             # minimum value of del_ns is 1
@@ -474,7 +477,7 @@ class Input(Tk):
             thresh_data = temp_data[(temp_data["del_ns_22"] > self.thresh) | (temp_data["del_ns_33"] > self.thresh)]
             data.append(thresh_data)
         #===============================================================================================================
-        # get rid of hodden file as fast as you can
+        # get rid of hidden file as fast as you can
         self.myETABSObject_dummy.ApplicationExit(False) # we donot wish to save the backup file
         # no concrete columns
         if len(data) == 0:
