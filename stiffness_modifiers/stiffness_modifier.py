@@ -5,7 +5,6 @@ from tkinter import messagebox
 
 class App():
     def __init__(self,master):
-        # super().__init__() # initialise the superclass Tk
         self.master = master
         self.font_size = ("Courier", 12)
         self.master.frame_1 = tk.LabelFrame(master)
@@ -50,6 +49,7 @@ class App():
         lbl_output33.grid(row=self.nrow+2, column=0,columnspan = 2,sticky='w')
         lbl_output33.config(font=self.font_size) 
     def modifier(self,i):
+        """some thing has to be done to clear previous output if any"""
         if i < 0.35:
             return "0.50" # why text? to display number to two decimal places.
         elif i > 0.7:
@@ -57,6 +57,7 @@ class App():
         else:
             return round((i/0.7),2)
     def inertia(self,mu,depth):
+        """As per 6.6.3.1.1 of ACI 318-14"""
         return (0.8 + 25 * self.ast/self.ag) * (1-mu*1000/(self.pu * depth) - 0.5 * self.pu/self.po)
 
 
