@@ -324,6 +324,8 @@ class Input(Tk):
             thresh_data = temp_data[(temp_data["del_ns_22"] > self.thresh) | (temp_data["del_ns_33"] > self.thresh)]
             data.append(thresh_data)
         #===============================================================================================================
+        # get rid of hodden file as fast as you can
+        self.myETABSObject_dummy.ApplicationExit(False) # we donot wish to save the backup file
         # no concrete columns
         if len(data) == 0:
             self.lbl_4 = self.label_fn_frame_1("No concrete columns found in the active model.")
@@ -472,6 +474,8 @@ class Input(Tk):
             thresh_data = temp_data[(temp_data["del_ns_22"] > self.thresh) | (temp_data["del_ns_33"] > self.thresh)]
             data.append(thresh_data)
         #===============================================================================================================
+        # get rid of hodden file as fast as you can
+        self.myETABSObject_dummy.ApplicationExit(False) # we donot wish to save the backup file
         # no concrete columns
         if len(data) == 0:
             self.lbl_4 = self.label_fn_frame_1("No concrete columns found in the active model.")
@@ -517,7 +521,6 @@ class Input(Tk):
         message = "Do you wish to continue?")
         self.lbl_analysis.destroy()
         self.lbl_analysiscomplete.destroy()
-        self.myETABSObject_dummy.ApplicationExit(False) # we donot wish to save the backup file
         # exception if files is closed
         try:
             self.file_open.destroy()
