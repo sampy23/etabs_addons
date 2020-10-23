@@ -1,6 +1,5 @@
 Attribute VB_Name = "ETABS_COREWALL_TABLE_CONVEROR"
 ' This program converts corewall data from etabs into user desired format using pivot table and custom made area convertor
-                                        ' --------------------------------------------------- A VBA SCRIPT BY SHAHABAZ SHA
 
 Public Function ArrayLen(arr As Variant) As Integer
     ' This function returns length of given array
