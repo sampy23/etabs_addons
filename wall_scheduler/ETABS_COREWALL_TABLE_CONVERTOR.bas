@@ -178,6 +178,11 @@ For i = 2 To lCol Step 2
 RSheet.Columns(i + 1).EntireColumn.Delete
 Next i
 
+' delete unwanted row and column
+RSheet.Columns(2).EntireColumn.Delete
+RSheet.Columns(2).EntireColumn.Delete 'previously third column will be 2nd column now
+RSheet.Rows(lRow).EntireRow.Delete
+RSheet.Rows(1).EntireRow.Delete
 
 RSheet.Range(RSheet.Cells(1, 1), RSheet.Cells(lRow, lCol)).ClearFormats
 RSheet.Range(RSheet.Cells(1, 1), RSheet.Cells(lRow, lCol)).Font.Name = "Arial"
