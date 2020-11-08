@@ -9,8 +9,8 @@ class App():
         self.font_size = ("Courier", 12)
         self.master.frame_1 = tk.LabelFrame(master)
         self.master.frame_1.grid(row=0,column=0)
-        self.title_list = ["Width(smallest)(mm)","Depth(mm)","P ultimate (kN)","Moment ultimate about width (2-2)(kNm)",\
-                        "Moment ultimate about depth (3-3)(kNm)","fc'(N/mm2)","fy(N/mm2)","Reinforcement ratio(%)"]
+        self.title_list = ["Width(smallest)(mm)","Depth(mm)","P ultimate (kN)","Moment ultimate along width (about 2-2)(kNm)",\
+                        "Moment ultimate along depth (about 3-3)(kNm)","fc'(N/mm2)","fy(N/mm2)","Reinforcement ratio(%)"]
         self.nrow = 0
         self.entry_set = defaultdict(list)
         for title in self.title_list:
@@ -31,8 +31,8 @@ class App():
         self.width = entry_dict["Width(smallest)(mm)"]
         self.depth = entry_dict["Depth(mm)"]
         self.pu = entry_dict["P ultimate (kN)"]
-        self.mu22 = entry_dict["Moment ultimate about width (2-2)(kNm)"]
-        self.mu33 = entry_dict["Moment ultimate about depth (3-3)(kNm)"]
+        self.mu22 = entry_dict["Moment ultimate along width (about 2-2)(kNm)"]
+        self.mu33 = entry_dict["Moment ultimate along depth (about 3-3)(kNm)"]
         self.ag = self.width * self.depth
         self.ast = self.ag * entry_dict["Reinforcement ratio(%)"]/100
         self.po = (0.85 * entry_dict["fc'(N/mm2)"] * (self.ag - self.ast) + entry_dict["fy(N/mm2)"] * self.ast)/1000
