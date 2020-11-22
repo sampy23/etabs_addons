@@ -14,21 +14,21 @@ class App():
         self.nrow = 0
         self.entry_set = defaultdict(list)
         for title in self.title_list:
-            lbl = tk.Label(root.frame_1, text=title,width = 69)
+            lbl = tk.Label(self.master.frame_1, text=title,width = 69)
             lbl.grid(row=self.nrow, column=0, sticky='e')
             lbl.config(font=self.font_size) 
-            ent = tk.Entry(root.frame_1)
+            ent = tk.Entry(self.master.frame_1)
             ent.grid(row=self.nrow, column=1)
             self.entry_set[title] = ent
             self.nrow += 1
-        button = tk.Button(root.frame_1,text = "OK",width=20,relief = 'raised')
+        button = tk.Button(self.master.frame_1,text = "OK",width=20,relief = 'raised')
         button.bind('<Button-1>', self.assign)
         master.bind('<Return>', self.assign)
         button.grid(row = self.nrow,column=0,columnspan = 2,padx=10,pady=10)
     
     def label_output(self,text,pos):
         """Helper function to deal with label outputs"""
-        lbl_output22 = tk.Label(root.frame_1, text=text)
+        lbl_output22 = tk.Label(self.master.frame_1, text=text)
         lbl_output22.grid(row=pos, column=0,columnspan = 2,sticky='w')
         lbl_output22.config(font=self.font_size) 
 
