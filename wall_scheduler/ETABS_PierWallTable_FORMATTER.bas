@@ -83,13 +83,19 @@ Set ISheet = Worksheets("Input")
 Set DSheet = Worksheets("Data Sheet")
 Set RSheet = Worksheets("Result Sheet")
 
-If ISheet.Cells(2, 14) <> "Shear Rebar" Then
+If DSheet.Cells(1, 6) <> "Shear Rebar" Then
     MsgBox "WARNING Some Walls are not assigned shear reinforcement", vbCritical, "Some walls in Design Reinforcing state!!"
     MsgBox "Make sure ""Shear bar"" column in ""Input sheet"" is at Column N", vbCritical, "Exiting the program"
     Exit Sub
 End If
 
-If (ISheet.Cells(3, 7) <> "mm") Or (ISheet.Cells(3, 14) <> "mm²/m") Then
+If (ISheet.Cells(2, 14) <> "Shear Rebar") Then
+    target_col = 16
+Else
+    target_col = 14
+End If
+
+If (ISheet.Cells(3, 7) <> "mm") Or (ISheet.Cells(3, target_col) <> "mm^2/m") Then
     result = MsgBox("Rebar dia and Spacing should be preferably be in mm and mm�/m format. Continue with current format?", _
        vbYesNo + vbInformation + vbDefaultButton2, "Format not matching!!!")
     If result <> vbYes Then
