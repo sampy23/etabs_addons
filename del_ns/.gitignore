@@ -1,6 +1,0 @@
-.vscode
-__pycache__
-build
-dist
-*.spec
-del_ns.exe
